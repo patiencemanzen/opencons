@@ -7,7 +7,7 @@ const { installRequireHook } = require('../interceptors/require-hook');
  * Install the require hook immediately. Import this module BEFORE your
  * application modules load:
  *
- *   require('routegrapher/register-transform');
+ *   require('opencons/register-transform');
  *
  * @param {object} [options]
  * @param {string} [options.projectRoot]
@@ -15,8 +15,14 @@ const { installRequireHook } = require('../interceptors/require-hook');
  */
 function registerTransform(options = {}) {
   installRequireHook({
-    projectRoot: options.projectRoot || process.env.ROUTEGRAPHER_ROOT || process.cwd(),
-    exclude: options.exclude || splitEnvList(process.env.ROUTEGRAPHER_TRANSFORM_EXCLUDE),
+    projectRoot:
+      options.projectRoot ||
+      process.env.OPENCONS_ROOT ||
+      process.env.ROUTEGRAPHER_ROOT ||
+      process.cwd(),
+    exclude:
+      options.exclude ||
+      splitEnvList(process.env.OPENCONS_TRANSFORM_EXCLUDE || process.env.ROUTEGRAPHER_TRANSFORM_EXCLUDE),
   });
 }
 
@@ -28,7 +34,10 @@ function splitEnvList(value) {
   return value.split(',').map((item) => item.trim()).filter(Boolean);
 }
 
-if (process.env.ROUTEGRAPHER_TRANSFORM === '1' || process.env.ROUTEGRAPHER_TRANSFORM === 'true') {
+const transformEnabled =
+  process.env.OPENCONS_TRANSFORM || process.env.ROUTEGRAPHER_TRANSFORM;
+
+if (transformEnabled === '1' || transformEnabled === 'true') {
   registerTransform();
 }
 

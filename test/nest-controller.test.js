@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { Observable } = require('rxjs');
 const { runWithContext } = require('../src/core/context');
 const { TraceTracer } = require('../src/core/tracer');
-const { RouteGrapherControllerInterceptor } = require('../src/integrations/nest-lifecycle');
+const { OpenconsControllerInterceptor } = require('../src/integrations/nest-lifecycle');
 
 describe('Nest controller tracing', () => {
   it('records controller handler after async observable completes', async () => {
@@ -17,7 +17,7 @@ describe('Nest controller tracing', () => {
       getHandler: () => ({ name: 'create' }),
     };
 
-    const interceptor = new RouteGrapherControllerInterceptor();
+    const interceptor = new OpenconsControllerInterceptor();
 
     await runWithContext(context, async () => {
       const stream = interceptor.intercept(executionContext, {

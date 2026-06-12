@@ -8,7 +8,7 @@ let globalPatchApplied = false;
 
 /**
  * Patch Express Application and Router prototypes so every handler
- * registered after RouteGrapher initialises is automatically wrapped.
+ * registered after Opencons initialises is automatically wrapped.
  */
 function patchExpressGlobally() {
   if (globalPatchApplied) return;
@@ -33,15 +33,15 @@ function patchExpressApp(app) {
  * @param {import('express').Application | import('express').Router} target
  */
 function patchLayer(target) {
-  if (target.__routegrapherLayerPatched) return;
-  target.__routegrapherLayerPatched = true;
+  if (target.__openconsLayerPatched) return;
+  target.__openconsLayerPatched = true;
 
   const originalUse = target.use;
   target.use = function patchedUse(...args) {
     const wrapped = wrapHandlers(args);
 
     for (const fn of wrapped) {
-      if (fn && fn.__routegrapherEntry) {
+      if (fn && fn.__openconsEntry) {
         patchLayer(this);
       }
     }
@@ -64,8 +64,8 @@ function patchLayer(target) {
  * @param {Function} Router
  */
 function patchRouterPrototype(Router) {
-  if (Router.__routegrapherPatched) return;
-  Router.__routegrapherPatched = true;
+  if (Router.__openconsPatched) return;
+  Router.__openconsPatched = true;
 
   const originalUse = Router.use;
   Router.use = function patchedRouterUse(...args) {
@@ -112,7 +112,7 @@ function wrapHandlers(args) {
  * @returns {Function}
  */
 function wrapHandler(handler) {
-  if (handler.__routegrapherWrapped) return handler;
+  if (handler.__openconsWrapped) return handler;
 
   const name = resolveHandlerName(handler);
 
@@ -220,8 +220,8 @@ function wrapHandler(handler) {
     }
   }
 
-  wrapped.__routegrapherWrapped = true;
-  wrapped.__routegrapherName = name;
+  wrapped.__openconsWrapped = true;
+  wrapped.__openconsName = name;
 
   return wrapped;
 }
@@ -230,7 +230,7 @@ function wrapHandler(handler) {
  * @param {Function} handler
  */
 function resolveHandlerName(handler) {
-  if (handler.__routegrapherName) return handler.__routegrapherName;
+  if (handler.__openconsName) return handler.__openconsName;
 
   const ctor = handler.constructor?.name;
   let method = handler.name;

@@ -11,7 +11,7 @@ const { resolveOptions, isProductionDisabled } = require('../lib/config');
 const { logger } = require('../lib/logger');
 const { safeClone } = require('../lib/serialize');
 
-/** @typedef {import('../lib/config').RouteGrapherOptions} RouteGrapherOptions */
+/** @typedef {import('../lib/config').OpenconsOptions} OpenconsOptions */
 
 /** @type {ReturnType<import('../store/trace-store').createTraceStore> | null} */
 let traceStore = null;
@@ -19,14 +19,14 @@ let traceStore = null;
 /** @type {boolean} */
 let initialised = false;
 
-/** @type {RouteGrapherOptions | null} */
+/** @type {OpenconsOptions | null} */
 let activeOptions = null;
 
 /**
- * @param {Partial<RouteGrapherOptions>} [userOptions]
+ * @param {Partial<OpenconsOptions>} [userOptions]
  * @returns {import('express').RequestHandler}
  */
-function createRouteGrapher(userOptions = {}) {
+function createOpencons(userOptions = {}) {
   let options;
 
   try {
@@ -37,13 +37,13 @@ function createRouteGrapher(userOptions = {}) {
   }
 
   if (isProductionDisabled(options)) {
-    logger.warn('Disabled in production. RouteGrapher is intended for development only.');
+    logger.warn('Disabled in production. Opencons is intended for development only.');
     return (_req, _res, next) => next();
   }
 
   if (initialised) {
     if (activeOptions && JSON.stringify(activeOptions) !== JSON.stringify(options)) {
-      logger.warn('Already initialised — additional options are ignored. Call routegrapher() once.');
+      logger.warn('Already initialised — additional options are ignored. Call opencons() once.');
     }
 
     return buildMiddleware(options);
@@ -77,7 +77,7 @@ function createRouteGrapher(userOptions = {}) {
 }
 
 /**
- * @param {RouteGrapherOptions} options
+ * @param {OpenconsOptions} options
  * @returns {import('express').RequestHandler}
  */
 function buildMiddleware(options) {
@@ -152,7 +152,7 @@ function buildMiddleware(options) {
 
   middleware.getTraces = () => (traceStore ? traceStore.getAll() : []);
   middleware.options = options;
-  middleware.__routegrapherEntry = true;
+  middleware.__openconsEntry = true;
 
   return middleware;
 }
@@ -194,5 +194,5 @@ function shouldExclude(req, excludePatterns) {
 }
 
 module.exports = {
-  createRouteGrapher,
+  createOpencons,
 };

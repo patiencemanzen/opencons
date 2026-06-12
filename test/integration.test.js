@@ -3,7 +3,7 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
-const routegrapher = require('../src/index');
+const opencons = require('../src/index');
 const express = require('express');
 
 const APP_PORT = 3456;
@@ -25,10 +25,10 @@ function fireRequest(path) {
   });
 }
 
-describe('RouteGrapher integration', () => {
+describe('Opencons integration', () => {
   before(async () => {
     const app = express();
-    rgMiddleware = routegrapher({ enableWidget: false });
+    rgMiddleware = opencons({ enableWidget: false });
 
     app.use(rgMiddleware);
 

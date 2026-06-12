@@ -9,7 +9,7 @@ let patched = false;
  * @param {string} operation
  */
 function wrapMysqlMethod(original, operation) {
-  return function routegrapherMysql(...args) {
+  return function OpenconsMysql(...args) {
     const sql = typeof args[0] === 'string' ? args[0] : args[0]?.sql;
     const params = typeof args[0] === 'object' && args[0]?.sql ? args[0].values : args[1];
     const callback = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : null;
@@ -68,14 +68,14 @@ function wrapMysqlMethod(original, operation) {
 function patchConnectionLike(target) {
   if (!target?.prototype) return;
 
-  if (target.prototype.query && !target.prototype.query.__routegrapherWrapped) {
+  if (target.prototype.query && !target.prototype.query.__openconsWrapped) {
     target.prototype.query = wrapMysqlMethod(target.prototype.query, 'query');
-    target.prototype.query.__routegrapherWrapped = true;
+    target.prototype.query.__openconsWrapped = true;
   }
 
-  if (target.prototype.execute && !target.prototype.execute.__routegrapherWrapped) {
+  if (target.prototype.execute && !target.prototype.execute.__openconsWrapped) {
     target.prototype.execute = wrapMysqlMethod(target.prototype.execute, 'execute');
-    target.prototype.execute.__routegrapherWrapped = true;
+    target.prototype.execute.__openconsWrapped = true;
   }
 }
 
@@ -100,7 +100,7 @@ function patchMysql2() {
   patchConnectionLike(mysql2);
   if (mysql2.createPool) {
     const originalCreatePool = mysql2.createPool.bind(mysql2);
-    mysql2.createPool = function routegrapherCreatePool(...args) {
+    mysql2.createPool = function OpenconsCreatePool(...args) {
       const pool = originalCreatePool(...args);
       patchConnectionLike(pool.constructor);
       return pool;

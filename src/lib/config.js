@@ -5,7 +5,7 @@ const { ConfigurationError } = require('./errors');
 /** @typedef {import('../core/tracer').TraceGraph} TraceGraph */
 
 /**
- * @typedef {Object} RouteGrapherOptions
+ * @typedef {Object} OpenconsOptions
  * @property {number} port
  * @property {boolean | undefined} enabled
  * @property {boolean} enableWidget
@@ -67,8 +67,8 @@ function requireStringArray(value, field) {
 /**
  * Merge user options with defaults and validate types.
  *
- * @param {Partial<RouteGrapherOptions>} [userOptions]
- * @returns {RouteGrapherOptions}
+ * @param {Partial<OpenconsOptions>} [userOptions]
+ * @returns {OpenconsOptions}
  */
 function resolveOptions(userOptions = {}) {
   const options = {

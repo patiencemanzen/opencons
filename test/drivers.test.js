@@ -98,7 +98,7 @@ describe('database capture', () => {
     const backends = patchDrizzle();
     assert.ok(backends.includes('node-postgres'));
     assert.notEqual(session.NodePgPreparedQuery.prototype.execute, original);
-    assert.equal(session.NodePgPreparedQuery.prototype.execute.__routegrapherWrapped, true);
+    assert.equal(session.NodePgPreparedQuery.prototype.execute.__openconsWrapped, true);
   });
 
   it('patches pg query when pg is available', () => {
@@ -115,6 +115,6 @@ describe('database capture', () => {
     const patched = patchPg();
     assert.equal(patched, true);
     assert.notEqual(Client.prototype.query, original);
-    assert.equal(Client.prototype.query.__routegrapherWrapped, true);
+    assert.equal(Client.prototype.query.__openconsWrapped, true);
   });
 });

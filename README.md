@@ -1,10 +1,10 @@
-# RouteGrapher
+# Opencons
 
 **Live runtime execution tracing for Node.js / Express**
 
-RouteGrapher automatically captures and visualises the complete execution path of every HTTP request passing through your Express application — in real time, with zero instrumentation code in your handlers.
+Opencons automatically captures and visualises the complete execution path of every HTTP request passing through your Express application — in real time, with zero instrumentation code in your handlers.
 
-> **Development only.** RouteGrapher is disabled when `NODE_ENV=production` unless you explicitly pass `enabled: true`.
+> **Development only.** Opencons is disabled when `NODE_ENV=production` unless you explicitly pass `enabled: true`.
 
 ---
 
@@ -68,7 +68,7 @@ RouteGrapher automatically captures and visualises the complete execution path o
 ## Installation
 
 ```bash
-npm install --save-dev routegrapher
+npm install --save-dev opencons
 ```
 
 **Local path install** (this repository):
@@ -81,15 +81,15 @@ npm install --save-dev /path/to/open-route
 
 ## Quick start
 
-Require RouteGrapher **before** creating your Express app, and register it as the **first** middleware:
+Require Opencons **before** creating your Express app, and register it as the **first** middleware:
 
 ```javascript
-const routegrapher = require('routegrapher'); // before express()
+const opencons = require('opencons'); // before express()
 const express = require('express');
 
 const app = express();
 
-app.use(routegrapher()); // must be first
+app.use(opencons()); // must be first
 
 app.use(express.json());
 app.use('/api', require('./routes'));
@@ -103,14 +103,14 @@ Open the widget while your app runs:
 http://localhost:7331
 ```
 
-If port 7331 is busy, RouteGrapher tries the next port and logs the actual URL.
+If port 7331 is busy, Opencons tries the next port and logs the actual URL.
 
 ---
 
 ## Configuration
 
 ```javascript
-app.use(routegrapher({
+app.use(opencons({
   port: 7331,              // widget + WebSocket port
   enabled: undefined,      // set true to force enable in production (not recommended)
   enableWidget: true,      // set false in automated tests
@@ -138,7 +138,7 @@ Invalid options throw a `ConfigurationError` at startup with a descriptive messa
 ### Programmatic access
 
 ```javascript
-const middleware = routegrapher({ enableWidget: false });
+const middleware = opencons({ enableWidget: false });
 const traces = middleware.getTraces();
 ```
 
@@ -146,31 +146,31 @@ const traces = middleware.getTraces();
 
 ## Environment variables
 
-Copy [.env.example](.env.example) into your host application. Load env **before** importing RouteGrapher when using transform variables.
+Copy [.env.example](.env.example) into your host application. Load env **before** importing Opencons when using transform variables.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NODE_ENV` | — | `production` disables tracing unless `enabled: true` |
-| `ROUTEGRAPHER_TRANSFORM` | — | `1` or `true` installs AST hook on import |
-| `ROUTEGRAPHER_ROOT` | `process.cwd()` | Project root for source transforms |
-| `ROUTEGRAPHER_TRANSFORM_EXCLUDE` | — | Comma-separated globs to skip |
-| `ROUTEGRAPHER_LOG_LEVEL` | `info` | Set to `debug` for verbose library logs |
+| `OPENCONS_TRANSFORM` | — | `1` or `true` installs AST hook on import |
+| `OPENCONS_ROOT` | `process.cwd()` | Project root for source transforms |
+| `OPENCONS_TRANSFORM_EXCLUDE` | — | Comma-separated globs to skip |
+| `OPENCONS_LOG_LEVEL` | `info` | Set to `debug` for verbose library logs |
 
 ---
 
 ## NestJS integration
 
 ```typescript
-// main.ts — import routegrapher before NestFactory.create()
+// main.ts — import Opencons before NestFactory.create()
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import routegrapher from 'routegrapher';
+import opencons from 'opencons';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  routegrapher.applyToNest(app, {
+  opencons.applyToNest(app, {
     port: 7331,
     exclude: ['/health'],
   });
@@ -194,7 +194,7 @@ bootstrap();
 
 ```typescript
 consumer
-  .apply(routegrapher.createNestMiddleware({ port: 7331 }))
+  .apply(opencons.createNestMiddleware({ port: 7331 }))
   .forRoutes('*');
 ```
 
@@ -203,7 +203,7 @@ Prefer `applyToNest()` in `main.ts` immediately after `NestFactory.create()`.
 ### Naming middleware
 
 ```javascript
-app.use(routegrapher.label('bullAuth', bullAuth));
+app.use(opencons.label('bullAuth', bullAuth));
 ```
 
 ---
@@ -213,7 +213,7 @@ app.use(routegrapher.label('bullAuth', bullAuth));
 Every `if` / `switch` / `while` / `for` / `try` in **CommonJS `.js` files** under your project root can be probed at load time. Branch decisions appear as diamond nodes in the graph.
 
 ```javascript
-app.use(routegrapher({
+app.use(opencons({
   transform: {
     enabled: true,
     projectRoot: process.cwd(),
@@ -222,22 +222,22 @@ app.use(routegrapher({
 }));
 ```
 
-For **NestJS** (TypeScript compiled to `dist/`), enable via `.env` so the hook runs when `routegrapher` is imported:
+For **NestJS** (TypeScript compiled to `dist/`), enable via `.env` so the hook runs when `Opencons` is imported:
 
 ```env
-ROUTEGRAPHER_TRANSFORM=1
-ROUTEGRAPHER_ROOT=dist/apps/api
+OPENCONS_TRANSFORM=1
+OPENCONS_ROOT=dist/apps/api
 ```
 
 ```typescript
 import './load-env';      // loads .env first
-import routegrapher from 'routegrapher';
+import opencons from 'opencons';
 import { AppModule } from './app.module';
 ```
 
-Or use `node -r routegrapher/register-transform` or `require('routegrapher/register-transform')()` before other imports.
+Or use `node -r opencons/register-transform` or `require('opencons/register-transform')()` before other imports.
 
-Skip a file with `// routegrapher-skip` at the top.
+Skip a file with `// opencons-skip` at the top.
 
 ---
 
@@ -253,10 +253,10 @@ Database queries appear as **blue fork nodes** off the handler that triggered th
 | MongoDB | `mongoose` |
 | Prisma | `@prisma/client` |
 
-Load `routegrapher` before creating database clients. When `drizzle-orm` is installed, RouteGrapher captures at the ORM layer and skips raw `pg`/`mysql2` to avoid duplicates.
+Load `Opencons` before creating database clients. When `drizzle-orm` is installed, Opencons captures at the ORM layer and skips raw `pg`/`mysql2` to avoid duplicates.
 
 ```javascript
-routegrapher.applyToNest(app, {
+opencons.applyToNest(app, {
   drivers: { drizzle: true, mongoose: false },
 });
 ```
@@ -353,7 +353,7 @@ open-route/
 ├── scripts/                     # Maintenance scripts
 ├── CONTRIBUTING.md
 ├── .env.example
-└── routegrapher.d.ts
+└── opencons.d.ts
 ```
 
 ---

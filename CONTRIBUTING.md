@@ -1,6 +1,6 @@
-# Contributing to RouteGrapher
+# Contributing to Opencons
 
-Thank you for helping improve RouteGrapher. This guide covers local setup, project layout, conventions, and how to run tests.
+Thank you for helping improve Opencons. This guide covers local setup, project layout, conventions, and how to run tests.
 
 ## Prerequisites
 
@@ -37,18 +37,17 @@ Try the demo requests from the README **Run the Example** section.
 npm link
 
 # In your Express/Nest project/
-npm link routegrapher
+npm link opencons
 ```
 
-Require `routegrapher` **before** `express()` and register the middleware **first**:
+Require `opencons` **before** `express()` and register the middleware **first**:
 
 ```javascript
-const routegrapher = require('routegrapher');
+const opencons = require('opencons');
 const express = require('express');
 
 const app = express();
-app.use(routegrapher({ port: 7331 }));
-```
+app.use(opencons({ port: 7331 }));
 
 ## Project structure
 
@@ -69,7 +68,7 @@ open-route/
 ├── examples/sample-app/      # Runnable Express demo
 ├── test/                     # Node.js built-in test runner
 ├── scripts/                  # Build/maintenance scripts
-└── routegrapher.d.ts         # TypeScript declarations
+└── Opencons.d.ts         # TypeScript declarations
 ```
 
 ### Module responsibilities
@@ -96,23 +95,23 @@ open-route/
 
 ### Design constraints
 
-RouteGrapher is a **development-only** library. Do not add features that encourage production deployment without explicit guards.
+Opencons is a **development-only** library. Do not add features that encourage production deployment without explicit guards.
 
-- Singleton initialisation is intentional (first `routegrapher()` call wins). Document behaviour when changing it.
-- Express prototype patching runs on `require('routegrapher')` so handlers registered later are wrapped automatically.
+- Singleton initialisation is intentional (first `opencons()` call wins). Document behaviour when changing it.
+- Express prototype patching runs on `require('opencons')` so handlers registered later are wrapped automatically.
 - The widget server has **no authentication** — acceptable only for local development.
 
 ## Environment variables
 
-See [.env.example](.env.example). Host applications must load `.env` **before** importing RouteGrapher when using transform env vars.
+See [.env.example](.env.example). Host applications must load `.env` **before** importing Opencons when using transform env vars.
 
 | Variable | Purpose |
 |----------|---------|
 | `NODE_ENV=production` | Disables tracing (unless `enabled: true`) |
-| `ROUTEGRAPHER_TRANSFORM=1` | Install AST require hook on import |
-| `ROUTEGRAPHER_ROOT` | Project root for transforms |
-| `ROUTEGRAPHER_TRANSFORM_EXCLUDE` | Comma-separated skip globs |
-| `ROUTEGRAPHER_LOG_LEVEL` | `info` (default) or `debug` |
+| `OPENCONS_TRANSFORM=1` | Install AST require hook on import |
+| `OPENCONS_ROOT` | Project root for transforms |
+| `OPENCONS_TRANSFORM_EXCLUDE` | Comma-separated skip globs |
+| `OPENCONS_LOG_LEVEL` | `info` (default) or `debug` |
 
 ## Running tests
 
@@ -147,5 +146,5 @@ Include:
 - Node.js version
 - Express or NestJS version
 - Minimal reproduction steps
-- Whether `ROUTEGRAPHER_TRANSFORM` is enabled
-- Relevant log output (`ROUTEGRAPHER_LOG_LEVEL=debug`)
+- Whether `OPENCONS_TRANSFORM` is enabled
+- Relevant log output (`OPENCONS_LOG_LEVEL=debug`)

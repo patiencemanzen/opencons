@@ -1,11 +1,11 @@
 'use strict';
 
 /**
- * Assign a display name to a middleware/handler for RouteGrapher traces.
+ * Assign a display name to a middleware/handler for Opencons traces.
  *
  * @example
- * app.use(routegrapher.label('cors', corsFn));
- * app.use(routegrapher.label('bullAuth', bullAuth));
+ * app.use(Opencons.label('cors', corsFn));
+ * app.use(Opencons.label('bullAuth', bullAuth));
  *
  * @param {string} name
  * @param {T} handler
@@ -17,7 +17,7 @@ function label(name, handler) {
     return handler;
   }
 
-  handler.__routegrapherName = name;
+  handler.__openconsName = name;
   return handler;
 }
 

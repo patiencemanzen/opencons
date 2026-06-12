@@ -1,11 +1,11 @@
 'use strict';
 
-window.RouteGrapherTimeline = {
+window.OpenconsTimeline = {
   /**
    * @param {object} trace
    */
   render(trace) {
-    const container = document.getElementById('timeline-view');
+    const container = document.querySelector('#timeline-view .timeline-card');
     container.innerHTML = '';
 
     const totalDuration = trace.duration_ms || 1;

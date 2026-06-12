@@ -17,7 +17,7 @@ describe('Nest integration', () => {
     });
 
     prependMiddleware(app, (_req, _res, next) => {
-      order.push('routegrapher');
+      order.push('Opencons');
       next();
     });
 
@@ -41,6 +41,6 @@ describe('Nest integration', () => {
 
     await new Promise((resolve) => server.close(resolve));
 
-    assert.deepEqual(order, ['routegrapher', 'existing', 'handler']);
+    assert.deepEqual(order, ['Opencons', 'existing', 'handler']);
   });
 });

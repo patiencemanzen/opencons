@@ -75,13 +75,13 @@ function patchPrisma() {
     }
   }
 
-  if (!PrismaClient?.prototype || PrismaClient.prototype.__routegrapherWrapped) {
+  if (!PrismaClient?.prototype || PrismaClient.prototype.__openconsWrapped) {
     return false;
   }
 
   const Original = PrismaClient;
 
-  const WrappedPrismaClient = function RoutegrapherPrismaClient(...args) {
+  const WrappedPrismaClient = function OpenconsPrismaClient(...args) {
     const client = new Original(...args);
     return patchPrismaClient(client);
   };
@@ -98,7 +98,7 @@ function patchPrisma() {
   }
 
   PrismaClient.prototype.constructor = WrappedPrismaClient;
-  PrismaClient.prototype.__routegrapherWrapped = true;
+  PrismaClient.prototype.__openconsWrapped = true;
   prismaModulePatched = true;
   return true;
 }

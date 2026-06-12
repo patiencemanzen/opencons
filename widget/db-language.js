@@ -82,7 +82,7 @@ function dbNodeResult(node) {
   return 'Completed';
 }
 
-window.RouteGrapherDbLanguage = {
+window.OpenconsDbLanguage = {
   dbActionIcon,
   dbNodeTitle,
   dbNodeIntent,

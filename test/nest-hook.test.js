@@ -4,12 +4,12 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
 const express = require('express');
-const routegrapher = require('../src/index');
+const opencons = require('../src/index');
 
 describe('Nest request hook integration', () => {
   it('traces requests through a Nest-style onRequestHook', async () => {
     const expressApp = express();
-    const rg = routegrapher({ enableWidget: false });
+    const rg = opencons({ enableWidget: false });
 
     const httpAdapter = {
       onRequestHook: null,

@@ -6,7 +6,7 @@ const { wrapHandler } = require('../src/interceptors/express');
 const { label } = require('../src/utils/label');
 
 describe('middleware naming', () => {
-  it('uses routegrapher.label()', () => {
+  it('uses Opencons.label()', () => {
     function myMiddleware(_req, _res, next) {
       next();
     }
@@ -14,7 +14,7 @@ describe('middleware naming', () => {
     const named = label('customCors', myMiddleware);
     const wrapped = wrapHandler(named);
 
-    assert.equal(wrapped.__routegrapherName, 'customCors');
+    assert.equal(wrapped.__openconsName, 'customCors');
   });
 
   it('labels bound Nest middleware class methods', () => {
@@ -27,6 +27,6 @@ describe('middleware naming', () => {
     const instance = new LoggerMiddleware();
     const wrapped = wrapHandler(label('LoggerMiddleware', instance.use.bind(instance)));
 
-    assert.equal(wrapped.__routegrapherName, 'LoggerMiddleware');
+    assert.equal(wrapped.__openconsName, 'LoggerMiddleware');
   });
 });

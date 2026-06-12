@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express';
 
-export interface RouteGrapherOptions {
+export interface OpenconsOptions {
   port?: number;
   enabled?: boolean;
   enableWidget?: boolean;
@@ -34,22 +34,22 @@ export interface TraceGraph {
   edges: object[];
 }
 
-export interface RouteGrapherMiddleware extends RequestHandler {
+export interface OpenconsMiddleware extends RequestHandler {
   getTraces: () => TraceGraph[];
-  options: RouteGrapherOptions;
-  __routegrapherEntry: boolean;
+  options: OpenconsOptions;
+  __openconsEntry: boolean;
 }
 
-export interface RouteGrapher {
-  (options?: RouteGrapherOptions): RouteGrapherMiddleware;
+export interface Opencons {
+  (options?: OpenconsOptions): OpenconsMiddleware;
   applyToNest(
     nestApp: { getHttpAdapter(): { getInstance(): unknown } },
-    options?: RouteGrapherOptions,
-  ): RouteGrapherMiddleware;
-  createNestMiddleware(options?: RouteGrapherOptions): RouteGrapherMiddleware;
+    options?: OpenconsOptions,
+  ): OpenconsMiddleware;
+  createNestMiddleware(options?: OpenconsOptions): OpenconsMiddleware;
   label<T extends Function>(name: string, handler: T): T;
 }
 
-declare const routegrapher: RouteGrapher;
+declare const opencons: Opencons;
 
-export default routegrapher;
+export default opencons;

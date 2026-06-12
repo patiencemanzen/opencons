@@ -45,13 +45,13 @@ function patchMongoose() {
     }
   }
 
-  if (!mongoose.Query?.prototype?.exec || mongoose.Query.prototype.exec.__routegrapherWrapped) {
+  if (!mongoose.Query?.prototype?.exec || mongoose.Query.prototype.exec.__openconsWrapped) {
     return false;
   }
 
   const originalExec = mongoose.Query.prototype.exec;
 
-  mongoose.Query.prototype.exec = function routegrapherMongooseExec(...args) {
+  mongoose.Query.prototype.exec = function OpenconsMongooseExec(...args) {
     const meta = describeMongooseQuery(this);
     return traceDbCall(() => originalExec.apply(this, args), {
       driver: 'mongoose',
@@ -59,12 +59,12 @@ function patchMongoose() {
     });
   };
 
-  mongoose.Query.prototype.exec.__routegrapherWrapped = true;
+  mongoose.Query.prototype.exec.__openconsWrapped = true;
 
-  if (mongoose.Aggregate?.prototype?.exec && !mongoose.Aggregate.prototype.exec.__routegrapherWrapped) {
+  if (mongoose.Aggregate?.prototype?.exec && !mongoose.Aggregate.prototype.exec.__openconsWrapped) {
     const originalAggregateExec = mongoose.Aggregate.prototype.exec;
 
-    mongoose.Aggregate.prototype.exec = function routegrapherAggregateExec(...args) {
+    mongoose.Aggregate.prototype.exec = function OpenconsAggregateExec(...args) {
       const collection = this._model?.collection?.name;
       const pipeline = this.pipeline();
 
@@ -77,7 +77,7 @@ function patchMongoose() {
       });
     };
 
-    mongoose.Aggregate.prototype.exec.__routegrapherWrapped = true;
+    mongoose.Aggregate.prototype.exec.__openconsWrapped = true;
   }
 
   patched = true;

@@ -3,18 +3,18 @@
 const NODE_COLORS = {
   request: '#6b7280',
   response: '#6b7280',
-  middleware: '#2dd4bf',
-  controller: '#818cf8',
+  middleware: '#ff7a45',
+  controller: '#a78bfa',
   branch: '#f59e0b',
-  loop: '#f97316',
+  loop: '#ff4d00',
   db: '#3b82f6',
   error: '#ef4444',
   ghost: '#4b5563',
 };
 
-const PATH_PALETTE = ['#3dd6c3', '#a78bfa', '#60a5fa', '#f472b6', '#fb923c', '#34d399', '#fbbf24'];
-const SURFACE_FILL = '#1e2230';
-const SURFACE_STROKE = '#343b52';
+const PATH_PALETTE = ['#ff4d00', '#a78bfa', '#60a5fa', '#f472b6', '#fb923c', '#34d399', '#fbbf24'];
+const SURFACE_FILL = '#222222';
+const SURFACE_STROKE = '#3a3a3a';
 
 const NODE_W = 148;
 const NODE_H = 42;
@@ -45,7 +45,7 @@ let activeSvg = null;
 /** @type {d3.Selection | null} */
 let activeRoot = null;
 
-window.RouteGrapherGraph = {
+window.OpenconsGraph = {
   /**
    * @param {object} trace
    * @param {(node: object) => void} onNodeSelect
@@ -866,7 +866,7 @@ function describeDbDrivers(drivers) {
 function renderDbQueryNode(group, d) {
   const halfW = DB_QUERY_W / 2;
   const halfH = DB_QUERY_H / 2;
-  const lang = window.RouteGrapherDbLanguage;
+  const lang = window.OpenconsDbLanguage;
   const icon = lang ? lang.dbActionIcon(d) : '◎';
   const title = lang ? lang.dbNodeTitle(d) : d.label || 'Query';
   const intent = lang ? lang.dbNodeIntent(d) : 'Database query';
@@ -1023,7 +1023,7 @@ function showTooltip(event, node, tooltip) {
     if (node.dbQueries?.length) {
       const queryLines = node.dbQueries
         .map((query) => {
-          const lang = window.RouteGrapherDbLanguage;
+          const lang = window.OpenconsDbLanguage;
           const title = lang ? lang.dbNodeTitle(query) : query.label;
           const result = lang ? lang.dbNodeResult(query) : query.db_result;
           return `${title} → ${result}`;
@@ -1034,7 +1034,7 @@ function showTooltip(event, node, tooltip) {
   }
 
   if (node.type === 'db' || node.isDbQuery) {
-    const lang = window.RouteGrapherDbLanguage;
+    const lang = window.OpenconsDbLanguage;
     const intent = lang ? lang.dbNodeIntent(node) : node.db_intent;
     const result = lang ? lang.dbNodeResult(node) : node.db_result;
 

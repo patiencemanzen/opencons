@@ -8,7 +8,7 @@ const { runWithContext } = require('../core/context');
 let cachedRxjs = null;
 
 /**
- * Load rxjs from the host application (Nest consumer), not from routegrapher.
+ * Load rxjs from the host application (Nest consumer), not from Opencons.
  */
 function loadRxjs() {
   if (cachedRxjs) return cachedRxjs;

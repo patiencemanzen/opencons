@@ -10,7 +10,7 @@ let patched = false;
  * @param {'node-postgres' | 'mysql2'} dialect
  */
 function wrapExecute(original, dialect) {
-  return async function routegrapherDrizzleExecute(placeholderValues = {}) {
+  return async function OpenconsDrizzleExecute(placeholderValues = {}) {
     const queryText =
       this.rawQueryConfig?.text ||
       this.rawQuery?.sql ||
@@ -51,13 +51,13 @@ function patchPreparedQuery(modulePath, className, dialect) {
 
   const PreparedQuery = session[className];
 
-  if (!PreparedQuery?.prototype?.execute || PreparedQuery.prototype.execute.__routegrapherWrapped) {
+  if (!PreparedQuery?.prototype?.execute || PreparedQuery.prototype.execute.__openconsWrapped) {
     return false;
   }
 
   const original = PreparedQuery.prototype.execute;
   PreparedQuery.prototype.execute = wrapExecute(original, dialect);
-  PreparedQuery.prototype.execute.__routegrapherWrapped = true;
+  PreparedQuery.prototype.execute.__openconsWrapped = true;
 
   return true;
 }

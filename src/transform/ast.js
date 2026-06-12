@@ -75,8 +75,8 @@ function elseProbeStatement(label) {
  */
 function transformSource(source, filename, options = {}) {
   const projectRoot = options.projectRoot;
-  if (source.includes('routegrapher-skip')) {
-    return { code: source, map: null, skipped: true, reason: 'routegrapher-skip' };
+  if (source.includes('opencons-skip') || source.includes('routegrapher-skip')) {
+    return { code: source, map: null, skipped: true, reason: 'opencons-skip' };
   }
 
   if (isLikelyMinified(source)) {

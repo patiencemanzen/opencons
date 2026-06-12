@@ -1,6 +1,6 @@
 'use strict';
 
-const { createRouteGrapher } = require('../core');
+const { createOpencons } = require('../core');
 const { patchExpressApp } = require('../interceptors/express');
 const {
   patchNestGlobally,
@@ -30,18 +30,18 @@ function prependMiddleware(expressApp, handler) {
 
 /**
  * @param {import('@nestjs/common').INestApplication} nestApp
- * @param {Parameters<typeof createRouteGrapher>[0]} [options]
- * @returns {ReturnType<typeof createRouteGrapher>}
+ * @param {Parameters<typeof createOpencons>[0]} [options]
+ * @returns {ReturnType<typeof createOpencons>}
  */
 function applyToNest(nestApp, options) {
   patchNestGlobally();
 
-  const middleware = createRouteGrapher(options);
+  const middleware = createOpencons(options);
   const httpAdapter = nestApp.getHttpAdapter();
 
   if (!httpAdapter || typeof httpAdapter.getInstance !== 'function') {
-    const { RouteGrapherError } = require('../lib/errors');
-    throw new RouteGrapherError(
+    const { OpenconsError } = require('../lib/errors');
+    throw new OpenconsError(
       'Nest app must use the Express adapter (@nestjs/platform-express).',
       'NEST_ADAPTER_REQUIRED'
     );
@@ -75,11 +75,11 @@ function applyToNest(nestApp, options) {
 }
 
 /**
- * @param {Parameters<typeof createRouteGrapher>[0]} [options]
- * @returns {ReturnType<typeof createRouteGrapher>}
+ * @param {Parameters<typeof createOpencons>[0]} [options]
+ * @returns {ReturnType<typeof createOpencons>}
  */
 function createNestMiddleware(options) {
-  return createRouteGrapher(options);
+  return createOpencons(options);
 }
 
 module.exports = {

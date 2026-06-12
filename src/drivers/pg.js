@@ -31,7 +31,7 @@ function parsePgQueryArgs(args) {
  * @param {Function} original
  */
 function wrapQuery(original) {
-  return function routegrapherPgQuery(...args) {
+  return function OpenconsPgQuery(...args) {
     const { text, values } = parsePgQueryArgs(args);
     const start = performance.now();
     const lastArg = args[args.length - 1];
@@ -88,13 +88,13 @@ function wrapQuery(original) {
  * @param {object} client
  */
 function patchPgClientPrototype(client) {
-  if (!client?.prototype?.query || client.prototype.query.__routegrapherWrapped) {
+  if (!client?.prototype?.query || client.prototype.query.__openconsWrapped) {
     return;
   }
 
   const original = client.prototype.query;
   client.prototype.query = wrapQuery(original);
-  client.prototype.query.__routegrapherWrapped = true;
+  client.prototype.query.__openconsWrapped = true;
 }
 
 function patchPg() {

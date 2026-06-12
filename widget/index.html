@@ -3,7 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RouteGrapher</title>
+    <title>Opencons</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/styles.css" />
     <script src="/vendor/d3.min.js"></script>
     <script>
@@ -15,65 +21,108 @@
     </script>
   </head>
   <body>
-    <header class="header">
-      <div class="brand">
-        <span class="brand-icon">◈</span>
-        <h1>RouteGrapher</h1>
-        <span class="brand-sub">Live Execution Tracer</span>
-      </div>
-      <div class="status" id="connection-status">
-        <span class="status-dot disconnected"></span>
-        <span class="status-text">Disconnected</span>
-      </div>
-    </header>
-
-    <main class="layout">
-      <aside class="request-list" id="request-list">
-        <div class="panel-header">
-          <h2>Requests</h2>
-          <span class="badge" id="request-count">0</span>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="workspace-brand">
+            <span class="brand-mark">O</span>
+            <div class="brand-text">
+              <span class="workspace-name">Opencons</span>
+              <span class="workspace-sub">Runtime tracer</span>
+            </div>
+          </div>
         </div>
-        <ul id="request-items"></ul>
-        <p class="empty-state" id="empty-state">Listening for requests…</p>
+
+        <nav class="sidebar-nav">
+          <button type="button" class="nav-item active" aria-current="page">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"
+              />
+            </svg>
+            <span>Requests</span>
+            <span class="nav-badge" id="request-count">0</span>
+          </button>
+          <button type="button" class="nav-item" disabled title="Coming soon">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                fill-rule="evenodd"
+                d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span>Insights</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-section">
+          <p class="section-label">Live requests</p>
+          <ul id="request-items" class="request-list"></ul>
+          <p class="empty-state" id="empty-state">Listening for requests…</p>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="status" id="connection-status">
+            <span class="status-dot disconnected"></span>
+            <span class="status-text">Disconnected</span>
+          </div>
+        </div>
       </aside>
 
-      <section class="trace-detail">
-        <div class="panel-header">
-          <h2 id="trace-title">Select a request</h2>
-          <div class="view-tabs">
-            <button class="tab active" data-view="graph">Graph</button>
-            <button class="tab" data-view="timeline">Timeline</button>
+      <main class="main-content">
+        <header class="main-header">
+          <div class="main-header-copy">
+            <p class="eyebrow">Execution trace</p>
+            <h1 id="trace-title">Select a request</h1>
           </div>
-        </div>
+          <div class="view-tabs" role="tablist" aria-label="Trace views">
+            <button class="tab active" data-view="graph" role="tab" aria-selected="true">
+              Graph
+            </button>
+            <button class="tab" data-view="timeline" role="tab" aria-selected="false">
+              Timeline
+            </button>
+          </div>
+        </header>
 
-        <div class="trace-views">
-          <div id="graph-view" class="view active">
-            <svg id="graph-svg"></svg>
-            <div class="graph-controls">
-              <span class="graph-hint">Drag canvas to pan · drag nodes to move · scroll to zoom</span>
-              <button type="button" id="graph-zoom-out" title="Zoom out">−</button>
-              <button type="button" id="graph-zoom-reset" title="Fit to view">Fit</button>
-              <button type="button" id="graph-zoom-in" title="Zoom in">+</button>
+        <div class="main-body">
+          <div class="trace-views">
+            <div id="graph-view" class="view active">
+              <div class="view-card">
+                <svg id="graph-svg"></svg>
+                <div class="graph-controls">
+                  <span class="graph-hint"
+                    >Drag to pan · move nodes · scroll to zoom</span
+                  >
+                  <button type="button" id="graph-zoom-out" title="Zoom out">−</button>
+                  <button type="button" id="graph-zoom-reset" title="Fit to view">Fit</button>
+                  <button type="button" id="graph-zoom-in" title="Zoom in">+</button>
+                </div>
+                <div id="node-tooltip" class="tooltip hidden"></div>
+              </div>
             </div>
-            <div id="node-tooltip" class="tooltip hidden"></div>
+            <div id="timeline-view" class="view">
+              <div class="view-card timeline-card"></div>
+            </div>
           </div>
-          <div id="timeline-view" class="view"></div>
-        </div>
 
-        <div id="node-detail" class="node-detail hidden">
-          <h3>Node Details</h3>
-          <dl id="node-detail-content"></dl>
-        </div>
+          <div class="detail-panels">
+            <div id="node-detail" class="detail-card hidden">
+              <h3 class="card-title">Node details</h3>
+              <dl id="node-detail-content" class="detail-grid"></dl>
+            </div>
 
-        <div id="source-peek" class="source-peek hidden">
-          <div class="source-peek-header">
-            <h3>Source</h3>
-            <span id="source-peek-path" class="source-peek-path"></span>
+            <div id="source-peek" class="detail-card hidden">
+              <div class="source-peek-header">
+                <h3 class="card-title">Source</h3>
+                <span id="source-peek-path" class="source-peek-path"></span>
+              </div>
+              <pre id="source-peek-content" class="source-peek-content"></pre>
+            </div>
           </div>
-          <pre id="source-peek-content" class="source-peek-content"></pre>
         </div>
-      </section>
-    </main>
+      </main>
+    </div>
 
     <script src="/app.js"></script>
     <script src="/db-language.js"></script>

@@ -87,7 +87,7 @@ function createStaticServer(port, maxAttempts = 10) {
           if (attempt === 1) {
             logger.warn(
               `Port ${candidatePort} is in use — trying ${nextPort}. ` +
-                'Kill the old process or set routegrapher({ port: N }).'
+                'Kill the old process or set opencons({ port: N }).'
             );
           }
 

@@ -162,8 +162,8 @@ function renderTraceDetail(trace) {
   const titleSuffix = trace.state === 'active' ? ' (in progress)' : '';
   els.traceTitle.textContent = `${trace.method} ${trace.url}${titleSuffix}`;
 
-  if (window.RouteGrapherTimeline) {
-    window.RouteGrapherTimeline.render(trace);
+  if (window.OpenconsTimeline) {
+    window.OpenconsTimeline.render(trace);
   }
 
   els.nodeDetail.classList.add('hidden');
@@ -178,8 +178,8 @@ function renderTraceDetail(trace) {
  * @param {object} trace
  */
 function renderGraph(trace) {
-  if (!window.RouteGrapherGraph) return;
-  window.RouteGrapherGraph.render(trace, onNodeSelect);
+  if (!window.OpenconsGraph) return;
+  window.OpenconsGraph.render(trace, onNodeSelect);
 }
 
 /**
@@ -226,7 +226,7 @@ function onNodeSelect(node) {
       fields.push(['Stack', node.drivers.join(' · ')]);
     }
     if (node.dbQueries?.length) {
-      const lang = window.RouteGrapherDbLanguage;
+      const lang = window.OpenconsDbLanguage;
       const lines = node.dbQueries.map((query) => {
         const title = lang ? lang.dbNodeTitle(query) : query.label;
         const result = lang ? lang.dbNodeResult(query) : query.db_result;
@@ -237,7 +237,7 @@ function onNodeSelect(node) {
   }
 
   if (node.type === 'db' || node.isDbQuery) {
-    const lang = window.RouteGrapherDbLanguage;
+    const lang = window.OpenconsDbLanguage;
     const intent = lang ? lang.dbNodeIntent(node) : node.db_intent;
     const result = lang ? lang.dbNodeResult(node) : node.db_result;
 
@@ -332,15 +332,15 @@ function escapeHtml(str) {
 }
 
 document.getElementById('graph-zoom-in')?.addEventListener('click', () => {
-  window.RouteGrapherGraph?.zoomIn();
+  window.OpenconsGraph?.zoomIn();
 });
 
 document.getElementById('graph-zoom-out')?.addEventListener('click', () => {
-  window.RouteGrapherGraph?.zoomOut();
+  window.OpenconsGraph?.zoomOut();
 });
 
 document.getElementById('graph-zoom-reset')?.addEventListener('click', () => {
-  window.RouteGrapherGraph?.resetView();
+  window.OpenconsGraph?.resetView();
 });
 
 document.querySelectorAll('.tab').forEach((tab) => {

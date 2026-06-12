@@ -6,7 +6,7 @@ const Module = require('module');
 const { transformSource } = require('../transform/ast');
 const sourceCache = require('../store/source-cache');
 
-const ROUTEGRAPHER_PKG = path.normalize(path.join(__dirname, '..', '..'));
+const OPENCONS_PKG = path.normalize(path.join(__dirname, '..', '..'));
 
 /** @type {boolean} */
 let hookInstalled = false;
@@ -30,7 +30,7 @@ function installRequireHook(options = {}) {
 
   const originalJsHandler = Module._extensions['.js'];
 
-  Module._extensions['.js'] = function routegrapherJsExtension(module, filename) {
+  Module._extensions['.js'] = function OpenconsJsExtension(module, filename) {
     if (!shouldTransformFile(filename)) {
       return originalJsHandler(module, filename);
     }
@@ -75,7 +75,7 @@ function createFilter(projectRoot, excludePatterns) {
       return false;
     }
 
-    if (normalized.startsWith(ROUTEGRAPHER_PKG)) {
+    if (normalized.startsWith(OPENCONS_PKG)) {
       return false;
     }
 

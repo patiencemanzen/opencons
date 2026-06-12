@@ -52,7 +52,7 @@ function recordStepSafe(alsContext, tracer, label, entered, calledNext, exitReas
  * @param {object} interceptor
  */
 function wrapNestInterceptor(interceptor) {
-  if (!interceptor || interceptor.__routegrapherWrapped) {
+  if (!interceptor || interceptor.__openconsWrapped) {
     return interceptor;
   }
 
@@ -63,7 +63,7 @@ function wrapNestInterceptor(interceptor) {
   const name = resolveNestComponentName(interceptor, 'Interceptor');
   const original = interceptor.intercept.bind(interceptor);
 
-  interceptor.intercept = function routegrapherIntercept(context, next) {
+  interceptor.intercept = function OpenconsIntercept(context, next) {
     const tracer = getCurrentTracer();
     const alsContext = getCurrentContext();
 
@@ -89,7 +89,7 @@ function wrapNestInterceptor(interceptor) {
     }
   };
 
-  interceptor.__routegrapherWrapped = true;
+  interceptor.__openconsWrapped = true;
   return interceptor;
 }
 
@@ -97,7 +97,7 @@ function wrapNestInterceptor(interceptor) {
  * @param {object} guard
  */
 function wrapNestGuard(guard) {
-  if (!guard || guard.__routegrapherWrapped) {
+  if (!guard || guard.__openconsWrapped) {
     return guard;
   }
 
@@ -108,7 +108,7 @@ function wrapNestGuard(guard) {
   const name = resolveNestComponentName(guard, 'Guard');
   const original = guard.canActivate.bind(guard);
 
-  guard.canActivate = async function routegrapherCanActivate(context) {
+  guard.canActivate = async function OpenconsCanActivate(context) {
     const tracer = getCurrentTracer();
     const alsContext = getCurrentContext();
 
@@ -128,7 +128,7 @@ function wrapNestGuard(guard) {
     }
   };
 
-  guard.__routegrapherWrapped = true;
+  guard.__openconsWrapped = true;
   return guard;
 }
 
@@ -157,7 +157,7 @@ function resolveControllerLabel(context) {
 /**
  * Trace controller handlers — must run as the innermost global interceptor.
  */
-class RouteGrapherControllerInterceptor {
+class OpenconsControllerInterceptor {
   intercept(context, next) {
     const tracer = getCurrentTracer();
     const alsContext = getCurrentContext();
@@ -256,7 +256,7 @@ function patchNestGlobally() {
  * @param {import('@nestjs/common').INestApplication} nestApp
  */
 function attachControllerTracing(nestApp) {
-  nestApp.useGlobalInterceptors(new RouteGrapherControllerInterceptor());
+  nestApp.useGlobalInterceptors(new OpenconsControllerInterceptor());
 }
 
 /**
@@ -272,24 +272,24 @@ function deferControllerTracingUntilReady(nestApp) {
   };
 
   const originalListen = nestApp.listen.bind(nestApp);
-  nestApp.listen = function routegrapherListen(...args) {
+  nestApp.listen = function OpenconsListen(...args) {
     attach();
     return originalListen(...args);
   };
 
   if (typeof nestApp.init === 'function') {
     const originalInit = nestApp.init.bind(nestApp);
-    nestApp.init = async function routegrapherInit(...args) {
+    nestApp.init = async function OpenconsInit(...args) {
       attach();
       return originalInit(...args);
     };
   }
 }
 
-/** @deprecated Use RouteGrapherControllerInterceptor via deferControllerTracingUntilReady */
-class RouteGrapherNestInterceptor {
+/** @deprecated Use OpenconsControllerInterceptor via deferControllerTracingUntilReady */
+class OpenconsNestInterceptor {
   intercept(context, next) {
-    return new RouteGrapherControllerInterceptor().intercept(context, next);
+    return new OpenconsControllerInterceptor().intercept(context, next);
   }
 }
 
@@ -297,7 +297,7 @@ class RouteGrapherNestInterceptor {
  * @param {object} pipe
  */
 function wrapNestPipe(pipe) {
-  if (!pipe || pipe.__routegrapherWrapped) {
+  if (!pipe || pipe.__openconsWrapped) {
     return pipe;
   }
 
@@ -308,7 +308,7 @@ function wrapNestPipe(pipe) {
   const name = resolveNestComponentName(pipe, 'Pipe');
   const original = pipe.transform.bind(pipe);
 
-  pipe.transform = function routegrapherTransform(value, metadata) {
+  pipe.transform = function OpenconsTransform(value, metadata) {
     const tracer = getCurrentTracer();
     const alsContext = getCurrentContext();
 
@@ -341,7 +341,7 @@ function wrapNestPipe(pipe) {
     }
   };
 
-  pipe.__routegrapherWrapped = true;
+  pipe.__openconsWrapped = true;
   return pipe;
 }
 
@@ -352,6 +352,6 @@ module.exports = {
   wrapNestPipe,
   attachControllerTracing,
   deferControllerTracingUntilReady,
-  RouteGrapherControllerInterceptor,
-  RouteGrapherNestInterceptor,
+  OpenconsControllerInterceptor,
+  OpenconsNestInterceptor,
 };

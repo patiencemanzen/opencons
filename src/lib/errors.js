@@ -1,18 +1,18 @@
 'use strict';
 
-class RouteGrapherError extends Error {
+class OpenconsError extends Error {
   /**
    * @param {string} message
    * @param {string} [code]
    */
-  constructor(message, code = 'ROUTEGRAPHER_ERROR') {
+  constructor(message, code = 'OPENCONS_ERROR') {
     super(message);
-    this.name = 'RouteGrapherError';
+    this.name = 'OpenconsError';
     this.code = code;
   }
 }
 
-class ConfigurationError extends RouteGrapherError {
+class ConfigurationError extends OpenconsError {
   /**
    * @param {string} message
    */
@@ -22,7 +22,7 @@ class ConfigurationError extends RouteGrapherError {
   }
 }
 
-class WidgetServerError extends RouteGrapherError {
+class WidgetServerError extends OpenconsError {
   /**
    * @param {string} message
    * @param {NodeJS.ErrnoException | null} [cause]
@@ -36,7 +36,7 @@ class WidgetServerError extends RouteGrapherError {
   }
 }
 
-class WebSocketError extends RouteGrapherError {
+class WebSocketError extends OpenconsError {
   /**
    * @param {string} message
    */
@@ -47,7 +47,7 @@ class WebSocketError extends RouteGrapherError {
 }
 
 module.exports = {
-  RouteGrapherError,
+  OpenconsError,
   ConfigurationError,
   WidgetServerError,
   WebSocketError,

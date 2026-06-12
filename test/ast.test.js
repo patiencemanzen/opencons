@@ -32,11 +32,11 @@ describe('transformSource', () => {
     assert.equal(result.reason, 'minified');
   });
 
-  it('skips files marked with routegrapher-skip', () => {
-    const source = '// routegrapher-skip\nif (x) {}';
+  it('skips files marked with opencons-skip', () => {
+    const source = '// opencons-skip\nif (x) {}';
     const result = transformSource(source, '/app/skip.js');
 
     assert.equal(result.skipped, true);
-    assert.equal(result.reason, 'routegrapher-skip');
+    assert.equal(result.reason, 'opencons-skip');
   });
 });

@@ -1,12 +1,12 @@
 {
-  "name": "routegrapher",
+  "name": "opencons",
   "version": "0.1.0",
-  "description": "Live runtime execution tracer for Node.js / Express — zero-config request-scoped visual tracing",
+  "description": "Opencons — live runtime execution tracer for Node.js / Express",
   "main": "src/index.js",
-  "types": "routegrapher.d.ts",
+  "types": "opencons.d.ts",
   "exports": {
     ".": {
-      "types": "./routegrapher.d.ts",
+      "types": "./opencons.d.ts",
       "require": "./src/index.js",
       "default": "./src/index.js"
     },
@@ -18,7 +18,7 @@
   "files": [
     "src",
     "widget",
-    "routegrapher.d.ts",
+    "opencons.d.ts",
     "scripts/vendor-d3.js"
   ],
   "scripts": {
