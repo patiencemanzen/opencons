@@ -11,7 +11,6 @@ Opencons automatically captures and visualises the complete execution path of ev
 ## Table of contents
 
 - [Features](#features)
-- [Tech stack](#tech-stack)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Quick start](#quick-start)
@@ -41,19 +40,6 @@ Opencons automatically captures and visualises the complete execution path of ev
 | Live widget | Request list, D3 execution graph, waterfall timeline |
 | NestJS | Guards, interceptors, pipes, controllers |
 
----
-
-## Tech stack
-
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js 18+ |
-| Framework | Express 4.x (peer dependency) |
-| Nest | `@nestjs/platform-express` |
-| AST | Babel 7 (`@babel/parser`, `@babel/traverse`, `@babel/generator`) |
-| Real-time | `ws` WebSocket on the widget HTTP port |
-| Widget UI | Vanilla HTML/CSS/JS + D3 v7 |
-| Context | Node `AsyncLocalStorage` |
 
 ---
 
@@ -69,12 +55,6 @@ Opencons automatically captures and visualises the complete execution path of ev
 
 ```bash
 npm install --save-dev opencons
-```
-
-**Local path install** (this repository):
-
-```bash
-npm install --save-dev /path/to/open-route
 ```
 
 ---
