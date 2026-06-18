@@ -34,7 +34,15 @@
         </div>
 
         <nav class="sidebar-nav">
-          <button type="button" class="nav-item active" data-panel="requests" aria-current="page">
+          <button type="button" class="nav-item active" data-panel="home" aria-current="page">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"
+              />
+            </svg>
+            <span>Home</span>
+          </button>
+          <button type="button" class="nav-item" data-panel="requests">
             <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path
                 d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"
@@ -79,10 +87,10 @@
       <main class="main-content">
         <header class="main-header">
           <div class="main-header-copy">
-            <p class="eyebrow">Execution trace</p>
-            <h1 id="trace-title">Select a request</h1>
+            <p class="eyebrow" id="header-eyebrow">Overview</p>
+            <h1 id="trace-title">App analytics</h1>
           </div>
-          <div class="main-header-actions">
+          <div class="main-header-actions hidden" id="trace-header-actions">
             <div class="view-tabs" role="tablist" aria-label="Trace views">
               <button class="tab active" data-view="graph" role="tab" aria-selected="true">
                 Graph
@@ -125,7 +133,11 @@
 
         <div id="comparison-banner" class="comparison-banner hidden" aria-live="polite"></div>
 
-        <div class="main-body" id="trace-body">
+        <div class="main-body" id="home-body">
+          <div id="home-dashboard" class="home-dashboard"></div>
+        </div>
+
+        <div class="main-body hidden" id="trace-body">
           <div class="trace-views">
             <div id="graph-view" class="view active">
               <div class="view-card">
@@ -174,6 +186,7 @@
     <script src="/db-language.js"></script>
     <script src="/export.js"></script>
     <script src="/snapshots.js"></script>
+    <script src="/analytics.js"></script>
     <script src="/graph.js"></script>
     <script src="/timeline.js"></script>
   </body>

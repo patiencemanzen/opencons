@@ -188,6 +188,100 @@ body {
   flex: 1;
 }
 
+.request-group {
+  margin-bottom: 4px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.request-group.expanded {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--border);
+}
+
+.request-group-header {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.request-group-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.request-group-header.active {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-glow);
+}
+
+.request-group-header.in-flight {
+  border-left: 3px solid var(--accent);
+  padding-left: 9px;
+}
+
+.request-group-header.highlight {
+  animation: request-highlight 2s ease-out;
+}
+
+.request-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.group-chevron {
+  color: var(--text-subtle);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+  width: 10px;
+}
+
+.group-count {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.request-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 4px 0;
+}
+
+.request-item-nested {
+  margin: 0 8px 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.request-item-nested .request-run-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.request-group-title .url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
 .request-item {
   padding: 10px 12px;
   margin-bottom: 4px;
@@ -970,7 +1064,133 @@ body {
   padding: 24px 0;
 }
 
+/* ── Home / analytics ─────────────────────────────────────── */
+
+.home-dashboard {
+  padding: 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.home-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.stat-unit {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.stat-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.stat-good {
+  color: var(--success);
+}
+
+.stat-bad {
+  color: var(--error);
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.chart-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 16px 8px;
+  min-width: 0;
+}
+
+.chart-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.chart-sub {
+  font-weight: 400;
+  color: var(--text-subtle);
+  font-size: 0.78rem;
+}
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-axis path,
+.chart-axis line {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+
+.chart-axis text {
+  fill: var(--text-subtle);
+  font-size: 0.68rem;
+  font-family: var(--font);
+}
+
+.chart-value {
+  fill: var(--text-muted);
+  font-size: 0.68rem;
+  font-family: var(--mono);
+}
+
 @media (max-width: 1100px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
   .snapshot-grid {
     grid-template-columns: 1fr;
   }

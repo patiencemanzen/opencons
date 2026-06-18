@@ -21,11 +21,14 @@ let wsConnected = false;
 /** @type {boolean} */
 let historyLoaded = false;
 
-/** @type {'requests' | 'snapshots'} */
-let activePanel = 'requests';
+/** @type {'home' | 'requests' | 'snapshots'} */
+let activePanel = 'home';
 
 /** @type {string | null} */
 let selectedSnapshotId = null;
+
+/** @type {Set<string>} */
+const expandedGroups = new Set();
 
 const snapshotStore = () => window.openconsSnapshotStore;
 
@@ -39,6 +42,10 @@ const els = {
   snapshotsEmpty: document.getElementById('snapshots-empty'),
   requestsSection: document.getElementById('requests-section'),
   snapshotsSection: document.getElementById('snapshots-section'),
+  homeBody: document.getElementById('home-body'),
+  homeDashboard: document.getElementById('home-dashboard'),
+  headerEyebrow: document.getElementById('header-eyebrow'),
+  traceHeaderActions: document.getElementById('trace-header-actions'),
   traceBody: document.getElementById('trace-body'),
   snapshotBody: document.getElementById('snapshot-body'),
   snapshotDetail: document.getElementById('snapshot-detail'),
@@ -97,6 +104,7 @@ function connect() {
         historyLoaded = true;
         message.payload.forEach((trace) => upsertTrace(trace));
         renderRequestList();
+        refreshHomeIfVisible();
         break;
       default:
         break;
@@ -113,6 +121,7 @@ function upsertTrace(trace, options = {}) {
   const isNew = !previous;
   traces.set(trace.id, trace);
   renderRequestList();
+  refreshHomeIfVisible();
 
   if (options.highlight || isNew) {
     highlightRequest(trace.id);
@@ -120,7 +129,7 @@ function upsertTrace(trace, options = {}) {
 
   if (options.autoSelect && (!selectedTraceId || trace.state === 'active')) {
     selectTrace(trace.id, { preserveHighlight: true });
-  } else if (options.refreshDetail && trace.id === selectedTraceId) {
+  } else if (options.refreshDetail && trace.id === selectedTraceId && activePanel === 'requests') {
     renderTraceDetail(trace);
   }
 }
@@ -135,8 +144,88 @@ function highlightRequest(id) {
   }, 2000);
 }
 
+/**
+ * @param {object} trace
+ */
+function traceEndpointKey(trace) {
+  if (window.OpenconsSnapshots?.endpointKey) {
+    return window.OpenconsSnapshots.endpointKey(trace.method, trace.url);
+  }
+  return `${trace.method} ${trace.url}`;
+}
+
+/**
+ * @param {object[]} items
+ */
+function groupTracesByEndpoint(items) {
+  /** @type {Map<string, object[]>} */
+  const groups = new Map();
+
+  for (const trace of items) {
+    const key = traceEndpointKey(trace);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(trace);
+  }
+
+  return Array.from(groups.entries())
+    .map(([key, groupTraces]) => {
+      groupTraces.sort((a, b) => b.timestamp - a.timestamp);
+      const [method, ...urlParts] = key.split(' ');
+      return {
+        key,
+        method,
+        url: urlParts.join(' '),
+        traces: groupTraces,
+        latest: groupTraces[0],
+      };
+    })
+    .sort((a, b) => b.latest.timestamp - a.latest.timestamp);
+}
+
+/**
+ * @param {object} trace
+ * @param {{ nested?: boolean }} [options]
+ */
+function createTraceListItem(trace, options = {}) {
+  const li = document.createElement('li');
+  const classes = ['request-item'];
+
+  if (options.nested) classes.push('request-item-nested');
+  if (trace.id === selectedTraceId) classes.push('active');
+  if (trace.state === 'active') classes.push('in-flight');
+  if (highlightIds.has(trace.id)) classes.push('highlight');
+
+  li.className = classes.join(' ');
+  li.dataset.id = trace.id;
+
+  const statusClass = trace.state === 'active' ? 'status-pending' : statusBadgeClass(trace.status);
+  const statusLabel = trace.state === 'active' ? '…' : (trace.status ?? '—');
+  const durationLabel = trace.state === 'active' ? 'running' : `${trace.duration_ms}ms`;
+
+  li.innerHTML = `
+    <div>
+      ${options.nested ? '' : `<span class="method method-${trace.method}">${trace.method}</span>`}
+      ${options.nested ? `<span class="request-run-label">${formatTime(trace.timestamp)}</span>` : `<span class="url">${escapeHtml(trace.url)}</span>`}
+      ${trace.state === 'active' ? '<span class="live-dot" title="In progress"></span>' : ''}
+    </div>
+    <div class="request-meta">
+      <span class="status-badge ${statusClass}">${statusLabel}</span>
+      <span>${durationLabel}</span>
+      ${options.nested ? '' : `<span>${formatTime(trace.timestamp)}</span>`}
+    </div>
+  `;
+
+  li.addEventListener('click', (event) => {
+    event.stopPropagation();
+    selectTrace(trace.id);
+  });
+
+  return li;
+}
+
 function renderRequestList() {
   const items = Array.from(traces.values()).sort((a, b) => b.timestamp - a.timestamp);
+  const groups = groupTracesByEndpoint(items);
 
   els.requestCount.textContent = String(items.length);
   els.emptyState.style.display = items.length ? 'none' : 'block';
@@ -150,38 +239,80 @@ function renderRequestList() {
     } else {
       els.emptyState.textContent = 'Listening for requests…';
     }
+    return;
   }
 
-  for (const trace of items) {
-    const li = document.createElement('li');
-    const classes = ['request-item'];
+  for (const group of groups) {
+    const hasSelected = group.traces.some((trace) => trace.id === selectedTraceId);
+    const hasInFlight = group.traces.some((trace) => trace.state === 'active');
+    const hasHighlight = group.traces.some((trace) => highlightIds.has(trace.id));
 
-    if (trace.id === selectedTraceId) classes.push('active');
-    if (trace.state === 'active') classes.push('in-flight');
-    if (highlightIds.has(trace.id)) classes.push('highlight');
+    if (hasSelected || hasInFlight || hasHighlight) {
+      expandedGroups.add(group.key);
+    }
 
-    li.className = classes.join(' ');
-    li.dataset.id = trace.id;
+    if (group.traces.length === 1) {
+      els.requestItems.appendChild(createTraceListItem(group.traces[0]));
+      continue;
+    }
 
-    const statusClass = trace.state === 'active' ? 'status-pending' : statusBadgeClass(trace.status);
-    const statusLabel = trace.state === 'active' ? '…' : (trace.status ?? '—');
-    const durationLabel = trace.state === 'active' ? 'running' : `${trace.duration_ms}ms`;
+    const isExpanded = expandedGroups.has(group.key);
+    const groupLi = document.createElement('li');
+    const headerClasses = ['request-group-header'];
 
-    li.innerHTML = `
-      <div>
-        <span class="method method-${trace.method}">${trace.method}</span>
-        <span class="url">${escapeHtml(trace.url)}</span>
-        ${trace.state === 'active' ? '<span class="live-dot" title="In progress"></span>' : ''}
+    if (hasSelected) headerClasses.push('active');
+    if (hasInFlight) headerClasses.push('in-flight');
+    if (hasHighlight) headerClasses.push('highlight');
+
+    groupLi.className = `request-group${isExpanded ? ' expanded' : ''}`;
+
+    const latest = group.latest;
+    const latestStatusClass =
+      latest.state === 'active' ? 'status-pending' : statusBadgeClass(latest.status);
+    const latestStatusLabel = latest.state === 'active' ? '…' : (latest.status ?? '—');
+    const latestDuration =
+      latest.state === 'active' ? 'running' : `${latest.duration_ms}ms`;
+
+    const header = document.createElement('div');
+    header.className = headerClasses.join(' ');
+    header.innerHTML = `
+      <div class="request-group-title">
+        <span class="group-chevron" aria-hidden="true">${isExpanded ? '▾' : '▸'}</span>
+        <span class="method method-${group.method}">${group.method}</span>
+        <span class="url">${escapeHtml(group.url)}</span>
+        <span class="group-count" title="${group.traces.length} requests">${group.traces.length}</span>
+        ${hasInFlight ? '<span class="live-dot" title="In progress"></span>' : ''}
       </div>
       <div class="request-meta">
-        <span class="status-badge ${statusClass}">${statusLabel}</span>
-        <span>${durationLabel}</span>
-        <span>${formatTime(trace.timestamp)}</span>
+        <span class="status-badge ${latestStatusClass}">${latestStatusLabel}</span>
+        <span>${latestDuration}</span>
+        <span>latest</span>
       </div>
     `;
 
-    li.addEventListener('click', () => selectTrace(trace.id));
-    els.requestItems.appendChild(li);
+    header.addEventListener('click', () => {
+      if (expandedGroups.has(group.key)) {
+        expandedGroups.delete(group.key);
+      } else {
+        expandedGroups.add(group.key);
+      }
+      renderRequestList();
+    });
+
+    groupLi.appendChild(header);
+
+    if (isExpanded) {
+      const childList = document.createElement('ul');
+      childList.className = 'request-group-list';
+
+      for (const trace of group.traces) {
+        childList.appendChild(createTraceListItem(trace, { nested: true }));
+      }
+
+      groupLi.appendChild(childList);
+    }
+
+    els.requestItems.appendChild(groupLi);
   }
 }
 
@@ -199,7 +330,9 @@ function selectTrace(id, options = {}) {
     highlightIds.delete(id);
   }
 
-  renderTraceDetail(trace);
+  if (activePanel === 'requests') {
+    renderTraceDetail(trace);
+  }
   renderRequestList();
 }
 
@@ -724,29 +857,66 @@ function formatSnapshotDate(iso) {
 }
 
 /**
- * @param {'requests' | 'snapshots'} panel
+ * @param {'home' | 'requests' | 'snapshots'} panel
  */
 function switchPanel(panel) {
   activePanel = panel;
   syncPanelUi();
 
-  if (panel === 'snapshots') {
+  if (panel === 'home') {
+    els.headerEyebrow.textContent = 'Overview';
+    els.traceTitle.textContent = 'App analytics';
+    els.comparisonBanner?.classList.add('hidden');
+    renderHomeDashboard();
+  } else if (panel === 'snapshots') {
+    els.headerEyebrow.textContent = 'Snapshots';
+    els.traceTitle.textContent = 'Snapshots';
+    els.comparisonBanner?.classList.add('hidden');
     renderSnapshotList();
     if (selectedSnapshotId) {
       setElementLoading(els.snapshotDetail, true, 'Loading snapshot…');
       requestAnimationFrame(() => renderSnapshotDetail(selectedSnapshotId));
-    } else {
-      els.traceTitle.textContent = 'Snapshots';
-      els.comparisonBanner?.classList.add('hidden');
     }
-  } else if (selectedTraceId) {
-    const trace = traces.get(selectedTraceId);
-    if (trace) renderTraceDetail(trace);
   } else {
-    els.traceTitle.textContent = 'Select a request';
-    els.comparisonBanner?.classList.add('hidden');
-    updateExportButtons(undefined);
+    els.headerEyebrow.textContent = 'Execution trace';
+    if (selectedTraceId) {
+      const trace = traces.get(selectedTraceId);
+      if (trace) renderTraceDetail(trace);
+    } else {
+      els.traceTitle.textContent = 'Select a request';
+      els.comparisonBanner?.classList.add('hidden');
+      updateExportButtons(undefined);
+    }
   }
+}
+
+function refreshHomeIfVisible() {
+  if (activePanel === 'home') {
+    renderHomeDashboard();
+  }
+}
+
+function renderHomeDashboard() {
+  if (!els.homeDashboard || !window.OpenconsAnalytics) return;
+
+  const loading = traces.size === 0 && (!wsConnected || !historyLoaded);
+
+  if (loading) {
+    els.homeDashboard.innerHTML = `<div class="home-empty">${loaderHtml('Loading analytics…')}</div>`;
+    return;
+  }
+
+  const analytics = window.OpenconsAnalytics.computeAnalytics(traces, traceEndpointKey);
+
+  window.OpenconsAnalytics.renderDashboard(els.homeDashboard, analytics, {
+    onEndpointClick: (row) => {
+      expandedGroups.add(row.key);
+      switchPanel('requests');
+      if (row.latestTraceId) {
+        selectTrace(row.latestTraceId, { preserveHighlight: true });
+      }
+    },
+  });
 }
 
 function syncPanelUi() {
@@ -758,8 +928,10 @@ function syncPanelUi() {
 
   els.requestsSection?.classList.toggle('hidden', activePanel !== 'requests');
   els.snapshotsSection?.classList.toggle('hidden', activePanel !== 'snapshots');
+  els.homeBody?.classList.toggle('hidden', activePanel !== 'home');
   els.traceBody?.classList.toggle('hidden', activePanel !== 'requests');
   els.snapshotBody?.classList.toggle('hidden', activePanel !== 'snapshots');
+  els.traceHeaderActions?.classList.toggle('hidden', activePanel !== 'requests');
 }
 
 els.exportTrace?.addEventListener('click', () => {
@@ -826,5 +998,6 @@ document.querySelectorAll('.nav-item[data-panel]').forEach((button) => {
 });
 
 renderSnapshotList();
-updateExportButtons(undefined);
+syncPanelUi();
+renderHomeDashboard();
 connect();
