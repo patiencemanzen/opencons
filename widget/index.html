@@ -34,7 +34,7 @@
         </div>
 
         <nav class="sidebar-nav">
-          <button type="button" class="nav-item active" aria-current="page">
+          <button type="button" class="nav-item active" data-panel="requests" aria-current="page">
             <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path
                 d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"
@@ -43,7 +43,7 @@
             <span>Requests</span>
             <span class="nav-badge" id="request-count">0</span>
           </button>
-          <button type="button" class="nav-item" disabled title="Coming soon">
+          <button type="button" class="nav-item" data-panel="snapshots">
             <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path
                 fill-rule="evenodd"
@@ -51,14 +51,21 @@
                 clip-rule="evenodd"
               />
             </svg>
-            <span>Insights</span>
+            <span>Snapshots</span>
+            <span class="nav-badge" id="snapshot-count">0</span>
           </button>
         </nav>
 
-        <div class="sidebar-section">
+        <div class="sidebar-section" id="requests-section">
           <p class="section-label">Live requests</p>
           <ul id="request-items" class="request-list"></ul>
           <p class="empty-state" id="empty-state">Listening for requests…</p>
+        </div>
+
+        <div class="sidebar-section hidden" id="snapshots-section">
+          <p class="section-label">Saved snapshots</p>
+          <ul id="snapshot-items" class="request-list snapshot-list"></ul>
+          <p class="empty-state" id="snapshots-empty">No snapshots yet — save one from a trace.</p>
         </div>
 
         <div class="sidebar-footer">
@@ -75,17 +82,50 @@
             <p class="eyebrow">Execution trace</p>
             <h1 id="trace-title">Select a request</h1>
           </div>
-          <div class="view-tabs" role="tablist" aria-label="Trace views">
-            <button class="tab active" data-view="graph" role="tab" aria-selected="true">
-              Graph
-            </button>
-            <button class="tab" data-view="timeline" role="tab" aria-selected="false">
-              Timeline
-            </button>
+          <div class="main-header-actions">
+            <div class="view-tabs" role="tablist" aria-label="Trace views">
+              <button class="tab active" data-view="graph" role="tab" aria-selected="true">
+                Graph
+              </button>
+              <button class="tab" data-view="timeline" role="tab" aria-selected="false">
+                Timeline
+              </button>
+            </div>
+            <div class="export-actions">
+              <button
+                type="button"
+                id="save-snapshot"
+                class="export-btn"
+                disabled
+                title="Save this trace as a snapshot to track improvements over time"
+              >
+                Save snapshot
+              </button>
+              <button
+                type="button"
+                id="export-trace"
+                class="export-btn export-btn-ghost"
+                disabled
+                title="Download structured trace JSON for performance analysis"
+              >
+                Export trace
+              </button>
+              <button
+                type="button"
+                id="copy-trace"
+                class="export-btn export-btn-ghost"
+                disabled
+                title="Copy trace JSON to clipboard"
+              >
+                Copy JSON
+              </button>
+            </div>
           </div>
         </header>
 
-        <div class="main-body">
+        <div id="comparison-banner" class="comparison-banner hidden" aria-live="polite"></div>
+
+        <div class="main-body" id="trace-body">
           <div class="trace-views">
             <div id="graph-view" class="view active">
               <div class="view-card">
@@ -121,11 +161,19 @@
             </div>
           </div>
         </div>
+
+        <div class="main-body hidden" id="snapshot-body">
+          <div class="snapshot-detail-card" id="snapshot-detail">
+            <p class="empty-state">Select a snapshot to see metrics and trends.</p>
+          </div>
+        </div>
       </main>
     </div>
 
     <script src="/app.js"></script>
     <script src="/db-language.js"></script>
+    <script src="/export.js"></script>
+    <script src="/snapshots.js"></script>
     <script src="/graph.js"></script>
     <script src="/timeline.js"></script>
   </body>

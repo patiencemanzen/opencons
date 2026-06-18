@@ -33,8 +33,16 @@
     "middleware",
     "developer-tools"
   ],
-  "author": "",
+  "author": "patiencemanzen",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/patiencemanzen/opencons.git"
+  },
+  "homepage": "https://github.com/patiencemanzen/opencons#readme",
+  "bugs": {
+    "url": "https://github.com/patiencemanzen/opencons/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
