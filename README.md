@@ -309,40 +309,12 @@ Each request produces a directed acyclic graph (DAG):
   ]
 }
 ```
-
----
-
-## Project structure
-
-```
-open-route/
-├── src/
-│   ├── index.js                 # Package entry — Express patch on import
-│   ├── core/                    # Middleware, tracer, AsyncLocalStorage
-│   ├── lib/                     # Config, logger, errors, HTTP helpers
-│   ├── interceptors/            # Express + require-hook patches
-│   ├── transform/               # Babel branch probe injection
-│   ├── store/                   # Trace ring buffer + source cache
-│   ├── server/                  # Widget HTTP + WebSocket
-│   ├── drivers/                 # DB driver patches
-│   ├── integrations/            # NestJS helpers
-│   └── utils/                   # label(), observable()
-├── widget/                      # Browser dev UI
-├── examples/sample-app/         # Runnable Express demo
-├── test/                        # Node.js test runner
-├── scripts/                     # Maintenance scripts
-├── CONTRIBUTING.md
-├── .env.example
-└── opencons.d.ts
-```
-
 ---
 
 ## Run the example
 
 ```bash
 npm install
-npm run start:example
 ```
 
 1. Open http://localhost:7331 for the widget
@@ -363,17 +335,6 @@ curl -X POST http://localhost:3000/api/orders \
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, coding conventions, and test instructions.
-
----
-
-## Roadmap
-
-| Phase | Feature | Status |
-|-------|---------|--------|
-| 1 | Request boundary, middleware chain, widget | Done |
-| 2 | AST branch probing, source peek | Done |
-| 3 | Database driver capture | Done |
-| 4 | TypeScript / ESM transforms, replay mode | Planned |
 
 ---
 
