@@ -1,16 +1,14 @@
-# Opencons
+**Live execution tracing for Node.js / Express — see exactly what your requests are doing, as they happen.**
 
-**Live runtime execution tracing for Node.js / Express**
+Opencons plugs into your Express app and gives you a real-time visual of every HTTP request's journey: which middleware ran, what branches were taken, what queries fired, and how long each step took. No manual instrumentation. No modifying your handlers. Just plug it in and watch.
 
-Opencons automatically captures and visualises the complete execution path of every HTTP request passing through your Express application — in real time, with zero instrumentation code in your handlers.
-
-> **Development only.** Opencons is disabled when `NODE_ENV=production` unless you explicitly pass `enabled: true`.
+> ⚠️ **Built for development.** Opencons stays off when `NODE_ENV=production` unless you deliberately override it. Keep it that way.
 
 ---
 
 ## Table of contents
 
-- [Features](#features)
+- [Why Opencons?](#why-opencons)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Quick start](#quick-start)
@@ -21,33 +19,36 @@ Opencons automatically captures and visualises the complete execution path of ev
 - [Database capture](#database-capture)
 - [Widget API](#widget-api)
 - [Trace data model](#trace-data-model)
-- [Project structure](#project-structure)
-- [Run the example](#run-the-example)
+- [Running the example app](#running-the-example-app)
 - [Contributing](#contributing)
-- [Roadmap](#roadmap)
 - [License](#license)
 
 ---
 
-## Features
+## Why Opencons?
 
-| Capability | Description |
-|------------|-------------|
-| Request tracing | Method, URL, status, duration per request |
-| Middleware chain | `next()` detection, early-exit reasons, async errors |
-| Branch probing | `if` / `switch` / loops / `try` as diamond nodes (CommonJS `.js`) |
-| DB capture | Drizzle, `pg`, `mysql2`, `mongoose`, Prisma |
-| Live widget | Request list, D3 execution graph, waterfall timeline |
-| NestJS | Guards, interceptors, pipes, controllers |
+When a request fails or slows down, the usual approach is sprinkling `console.log` statements everywhere and guessing. Opencons gives you a better alternative: a full picture of what actually happened, structured as a visual graph.
 
+Here's what you get out of the box:
+
+| Capability | What it tells you |
+|---|---|
+| **Request tracing** | Method, URL, status code, and total duration for every request |
+| **Middleware chain** | Which middleware ran, whether it called `next()`, and where it bailed out |
+| **Branch probing** | Which `if` / `switch` / `try` paths were actually taken |
+| **Database capture** | Every query that fired, linked to the handler that triggered it |
+| **Live widget** | A browser-based UI with a request list, execution graph, and waterfall timeline |
+| **NestJS support** | Guards, interceptors, pipes, and controllers — all traced |
 
 ---
 
 ## Prerequisites
 
-- Node.js **18.0.0** or newer
-- An Express 4.x application (or NestJS with the Express adapter)
-- For Nest interceptor tracing: `rxjs` ^7
+Before you install, make sure you have:
+
+- **Node.js 18.0.0 or newer**
+- An **Express 4.x** application — or NestJS using the Express adapter
+- If you're tracing NestJS interceptors: **`rxjs` ^7**
 
 ---
 
@@ -57,19 +58,26 @@ Opencons automatically captures and visualises the complete execution path of ev
 npm install --save-dev opencons
 ```
 
+Since this is a dev tool, installing it as a dev dependency keeps it out of your production bundle.
+
 ---
 
 ## Quick start
 
-Require Opencons **before** creating your Express app, and register it as the **first** middleware:
+There are two rules to follow when setting up Opencons:
+
+1. **Require it before you create your Express app.**
+2. **Register it as your first middleware.**
+
+Both matter. If Express is created first, Opencons can't attach to the request lifecycle correctly.
 
 ```javascript
-const opencons = require('opencons'); // before express()
+const opencons = require('opencons'); // must come before express()
 const express = require('express');
 
 const app = express();
 
-app.use(opencons()); // must be first
+app.use(opencons()); // must be the first middleware
 
 app.use(express.json());
 app.use('/api', require('./routes'));
@@ -77,27 +85,29 @@ app.use('/api', require('./routes'));
 app.listen(3000);
 ```
 
-Open the widget while your app runs:
+Once your app is running, open the widget in your browser:
 
 ```
 http://localhost:7331
 ```
 
-If port 7331 is busy, Opencons tries the next port and logs the actual URL.
+If port `7331` is already in use, Opencons will automatically try the next available port and log the actual URL to your console.
 
 ---
 
 ## Configuration
 
+Opencons works with zero configuration, but here's everything you can tune:
+
 ```javascript
 app.use(opencons({
-  port: 7331,              // widget + WebSocket port
-  enabled: undefined,      // set true to force enable in production (not recommended)
-  enableWidget: true,      // set false in automated tests
-  exclude: ['/health'],    // routes to ignore
-  captureBody: false,      // snapshot request bodies on the trace
-  captureResponse: false,  // snapshot response bodies (res.json / res.send)
-  maxTraces: 100,          // in-memory ring buffer size
+  port: 7331,              // Port for the widget UI and WebSocket connection
+  enabled: undefined,      // Override to `true` if you need it on in production (not recommended)
+  enableWidget: true,      // Set to `false` when running automated tests
+  exclude: ['/health'],    // Routes to ignore entirely — useful for health checks
+  captureBody: false,      // Whether to snapshot request bodies in the trace
+  captureResponse: false,  // Whether to snapshot response bodies (res.json / res.send)
+  maxTraces: 100,          // How many traces to keep in the in-memory ring buffer
   drivers: {
     mongoose: true,
     drizzle: true,
@@ -106,16 +116,18 @@ app.use(opencons({
     mysql2: true,
   },
   transform: {
-    enabled: false,        // AST branch probing (Phase 2)
+    enabled: false,        // Enable AST branch probing (see Branch tracing section)
     projectRoot: process.cwd(),
     exclude: ['vendor/**'],
   },
 }));
 ```
 
-Invalid options throw a `ConfigurationError` at startup with a descriptive message.
+If you pass an invalid option, Opencons throws a `ConfigurationError` at startup with a clear message telling you what's wrong — it won't silently misbehave.
 
-### Programmatic access
+### Accessing traces programmatically
+
+If you want to read trace data in tests or scripts without the widget running:
 
 ```javascript
 const middleware = opencons({ enableWidget: false });
@@ -126,22 +138,24 @@ const traces = middleware.getTraces();
 
 ## Environment variables
 
-Copy [.env.example](.env.example) into your host application. Load env **before** importing Opencons when using transform variables.
+Copy `.env.example` into your project. If you're using the `transform` variables, make sure your `.env` is loaded **before** Opencons is imported.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NODE_ENV` | — | `production` disables tracing unless `enabled: true` |
-| `OPENCONS_TRANSFORM` | — | `1` or `true` installs AST hook on import |
-| `OPENCONS_ROOT` | `process.cwd()` | Project root for source transforms |
-| `OPENCONS_TRANSFORM_EXCLUDE` | — | Comma-separated globs to skip |
-| `OPENCONS_LOG_LEVEL` | `info` | Set to `debug` for verbose library logs |
+| Variable | Default | What it does |
+|---|---|---|
+| `NODE_ENV` | — | Setting this to `production` disables Opencons unless `enabled: true` is passed |
+| `OPENCONS_TRANSFORM` | — | Set to `1` or `true` to install the AST hook at import time |
+| `OPENCONS_ROOT` | `process.cwd()` | The project root Opencons uses when resolving files for source transforms |
+| `OPENCONS_TRANSFORM_EXCLUDE` | — | Comma-separated glob patterns for files to skip during transformation |
+| `OPENCONS_LOG_LEVEL` | `info` | Set to `debug` to get verbose internal logs from Opencons |
 
 ---
 
 ## NestJS integration
 
+NestJS needs a slightly different setup. Import Opencons before calling `NestFactory.create()` — the same "before everything else" rule applies.
+
 ```typescript
-// main.ts — import Opencons before NestFactory.create()
+// main.ts
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import opencons from 'opencons';
@@ -161,16 +175,18 @@ async function bootstrap() {
 bootstrap();
 ```
 
-**What gets traced**
+**What gets traced in NestJS:**
 
 | Layer | Traced? |
-|-------|---------|
-| HTTP request / response | Yes |
-| Express middleware | Yes |
-| Nest controllers | Yes |
-| Nest guards / interceptors / pipes | Yes |
+|---|---|
+| HTTP request / response | ✅ Yes |
+| Express middleware | ✅ Yes |
+| Nest controllers | ✅ Yes |
+| Guards, interceptors, and pipes | ✅ Yes |
 
 ### Alternative: `MiddlewareConsumer`
+
+If you prefer wiring Opencons through the module system:
 
 ```typescript
 consumer
@@ -178,9 +194,11 @@ consumer
   .forRoutes('*');
 ```
 
-Prefer `applyToNest()` in `main.ts` immediately after `NestFactory.create()`.
+That said, the `applyToNest()` approach in `main.ts` is preferred — it ensures Opencons is in place before any requests can arrive.
 
-### Naming middleware
+### Giving your middleware a name
+
+When you're wrapping anonymous middleware functions, you can give them a label so they show up clearly in the trace graph:
 
 ```javascript
 app.use(opencons.label('bullAuth', bullAuth));
@@ -190,54 +208,90 @@ app.use(opencons.label('bullAuth', bullAuth));
 
 ## Branch tracing (AST)
 
-Every `if` / `switch` / `while` / `for` / `try` in **CommonJS `.js` files** under your project root can be probed at load time. Branch decisions appear as diamond nodes in the graph.
+By default, Opencons traces which middleware and handlers ran. With branch tracing enabled, it goes deeper — it instruments every `if`, `switch`, `while`, `for`, and `try` block in your code at load time, so you can see exactly which code paths executed for any given request.
+
+Branch decisions appear as **diamond nodes** in the execution graph.
+
+> **Heads up:** This currently works on **CommonJS `.js` files** only. TypeScript files compiled to `dist/` are supported in NestJS via the environment variable approach below.
+
+### Enable in Express
 
 ```javascript
 app.use(opencons({
   transform: {
     enabled: true,
     projectRoot: process.cwd(),
-    exclude: ['dist/vendor/**'],
+    exclude: ['dist/vendor/**'], // skip files you don't need traced
   },
 }));
 ```
 
-For **NestJS** (TypeScript compiled to `dist/`), enable via `.env` so the hook runs when `Opencons` is imported:
+### Enable in NestJS (TypeScript)
+
+For NestJS, the hook needs to run when Opencons is first imported — before any of your compiled code loads. Use environment variables to set this up:
 
 ```env
 OPENCONS_TRANSFORM=1
 OPENCONS_ROOT=dist/apps/api
 ```
 
+Then, in `main.ts`, make sure your `.env` is loaded first:
+
 ```typescript
-import './load-env';      // loads .env first
+import './load-env';      // loads .env before anything else
 import opencons from 'opencons';
 import { AppModule } from './app.module';
 ```
 
-Or use `node -r opencons/register-transform` or `require('opencons/register-transform')()` before other imports.
+Alternatively, use the register hook directly:
 
-Skip a file with `// opencons-skip` at the top.
+```bash
+node -r opencons/register-transform your-app.js
+```
+
+Or in code:
+
+```javascript
+require('opencons/register-transform')();
+// ... rest of your imports
+```
+
+### Skipping a file
+
+If you have a file you don't want instrumented, add this comment at the very top:
+
+```javascript
+// opencons-skip
+```
 
 ---
 
 ## Database capture
 
-Database queries appear as **blue fork nodes** off the handler that triggered them.
+Database queries appear in the trace graph as **blue fork nodes**, branching off the handler that triggered them. You can see the query, its timing, and exactly which handler was responsible.
+
+Supported drivers:
 
 | Driver | Package |
-|--------|---------|
+|---|---|
 | Drizzle ORM | `drizzle-orm` |
 | PostgreSQL | `pg` |
 | MySQL | `mysql2` |
 | MongoDB | `mongoose` |
 | Prisma | `@prisma/client` |
 
-Load `Opencons` before creating database clients. When `drizzle-orm` is installed, Opencons captures at the ORM layer and skips raw `pg`/`mysql2` to avoid duplicates.
+**One important requirement:** load Opencons before you create your database clients. Otherwise, Opencons can't intercept the connection.
+
+**About Drizzle + pg:** If you have `drizzle-orm` installed, Opencons captures at the ORM layer and automatically skips raw `pg`/`mysql2` to avoid logging duplicate queries.
+
+You can opt individual drivers in or out:
 
 ```javascript
 opencons.applyToNest(app, {
-  drivers: { drizzle: true, mongoose: false },
+  drivers: {
+    drizzle: true,
+    mongoose: false, // disable if you don't use it
+  },
 });
 ```
 
@@ -245,49 +299,51 @@ opencons.applyToNest(app, {
 
 ## Widget API
 
-The dev widget server exposes a minimal HTTP API (no authentication — local dev only).
+The widget server exposes a small HTTP API for reading source code context in the graph. This is intentionally unauthenticated — it's for local development only.
 
 ### `GET /api/source`
 
-Returns a source snippet for branch peek in the graph.
+Fetches a source snippet for a specific file and line, used when you click a branch node in the graph.
 
 | Query param | Required | Description |
-|-------------|----------|-------------|
-| `file` | Yes | Project-relative path or basename |
-| `line` | No | 1-based line number (default: 1) |
+|---|---|---|
+| `file` | Yes | Project-relative path or just the filename |
+| `line` | No | 1-based line number (defaults to `1`) |
 
-**Responses**
+**Response shapes:**
 
 | Status | Body |
-|--------|------|
-| 200 | `{ file, line, startLine, lines: [{ number, text, highlight }] }` |
-| 400 | `{ error, code: "MISSING_FILE_PARAM" }` |
-| 404 | `{ error, code: "SOURCE_NOT_FOUND" }` |
+|---|---|
+| `200` | `{ file, line, startLine, lines: [{ number, text, highlight }] }` |
+| `400` | `{ error, code: "MISSING_FILE_PARAM" }` |
+| `404` | `{ error, code: "SOURCE_NOT_FOUND" }` |
 
 ### WebSocket protocol
 
-Connect to `ws://localhost:<port>` (same port as the widget).
+Opencons streams live trace data over a WebSocket on the same port as the widget. You can connect to it directly if you want to build your own tooling on top.
 
-**Client → server**
+Connect to: `ws://localhost:<port>`
+
+**Sending a message:**
 
 ```json
 { "type": "get_history", "limit": 50 }
 ```
 
-**Server → client**
+**Messages you'll receive:**
 
-| Type | When |
-|------|------|
-| `trace_start` | Request begins |
-| `trace_update` | Live progress |
-| `trace` | Request completed |
-| `history` | Response to `get_history` |
+| Type | When it's sent |
+|---|---|
+| `trace_start` | A new request has just begun |
+| `trace_update` | A request is in progress (live updates) |
+| `trace` | A request has completed |
+| `history` | Response to your `get_history` message |
 
 ---
 
 ## Trace data model
 
-Each request produces a directed acyclic graph (DAG):
+Every completed request produces a **directed acyclic graph (DAG)**. Here's what a trace looks like:
 
 ```json
 {
@@ -299,9 +355,9 @@ Each request produces a directed acyclic graph (DAG):
   "body": null,
   "response": { "id": 1, "name": "Ada" },
   "nodes": [
-    { "id": "n1", "type": "request", "label": "GET /api/users/1" },
+    { "id": "n1", "type": "request",    "label": "GET /api/users/1" },
     { "id": "n2", "type": "middleware", "label": "authMiddleware", "duration_ms": 0.5, "called_next": true },
-    { "id": "n3", "type": "response", "label": "200" }
+    { "id": "n3", "type": "response",   "label": "200" }
   ],
   "edges": [
     { "from": "n1", "to": "n2" },
@@ -309,32 +365,45 @@ Each request produces a directed acyclic graph (DAG):
   ]
 }
 ```
+
+Each node represents a step in the request's execution. Edges connect them in the order they ran. The graph is what powers the visual in the widget — but it's also consumable directly if you want to run assertions in tests or pipe traces elsewhere.
+
 ---
 
-## Run the example
+## Running the example app
+
+The repository includes an example Express app with auth middleware, a few routes, and some database interactions — a good way to see everything in action.
 
 ```bash
 npm install
 ```
 
-1. Open http://localhost:7331 for the widget
-2. Fire requests against http://localhost:3000:
+Start the app, then open the widget at **http://localhost:7331** and fire some requests at **http://localhost:3000**:
 
 ```bash
+# Public route — no auth needed
 curl http://localhost:3000/api/public
+
+# Private route — try without auth first to see the 401
 curl http://localhost:3000/api/users/42
+
+# Same route with a valid token — watch the middleware chain change
 curl -H "Authorization: Bearer dev" http://localhost:3000/api/users/42
+
+# A POST with a body — to see request capture in action
 curl -X POST http://localhost:3000/api/orders \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer dev" \
-  -d "{\"items\":[1]}"
+  -d '{"items":[1]}'
 ```
+
+Watch the widget update in real time as each request completes.
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, coding conventions, and test instructions.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up the project locally, the coding conventions we follow, and how to run the test suite.
 
 ---
 
