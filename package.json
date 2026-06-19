@@ -1,6 +1,6 @@
 {
   "name": "opencons",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Opencons — live runtime execution tracer for Node.js / Express",
   "main": "src/index.js",
   "types": "opencons.d.ts",
