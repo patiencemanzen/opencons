@@ -1,4 +1,8 @@
-**Live execution tracing for Node.js / Express — see exactly what your requests are doing, as they happen.**
+## See exactly what your requests are doing, as they happen
+<img width="4116" height="2186" alt="beautified-screenshot" src="https://github.com/user-attachments/assets/02a90af4-bbd2-416c-bacf-8ca93143e799" />
+
+
+**Live execution tracing for Node.js / Express / Nest.js.**
 
 Opencons plugs into your Express app and gives you a real-time visual of every HTTP request's journey: which middleware ran, what branches were taken, what queries fired, and how long each step took. No manual instrumentation. No modifying your handlers. Just plug it in and watch.
 
@@ -28,6 +32,8 @@ Opencons plugs into your Express app and gives you a real-time visual of every H
 ## Why Opencons?
 
 When a request fails or slows down, the usual approach is sprinkling `console.log` statements everywhere and guessing. Opencons gives you a better alternative: a full picture of what actually happened, structured as a visual graph.
+
+<img width="4122" height="2192" alt="beautified-screenshot (2)" src="https://github.com/user-attachments/assets/589935f8-f0d6-457b-97e3-e6b7182f85df" />
 
 Here's what you get out of the box:
 
@@ -90,6 +96,7 @@ Once your app is running, open the widget in your browser:
 ```
 http://localhost:7331
 ```
+<img width="4128" height="2188" alt="beautified-screenshot (1)" src="https://github.com/user-attachments/assets/ba348953-58e3-4bd6-8880-65c6a5effe93" />
 
 If port `7331` is already in use, Opencons will automatically try the next available port and log the actual URL to your console.
 
