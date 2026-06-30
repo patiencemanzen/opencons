@@ -7,6 +7,7 @@
  * @param {string} [contentType]
  */
 function sendText(res, status, body, contentType = 'text/plain; charset=utf-8') {
+  if (res.headersSent) return;
   res.writeHead(status, { 'Content-Type': contentType });
   res.end(body);
 }
@@ -17,6 +18,7 @@ function sendText(res, status, body, contentType = 'text/plain; charset=utf-8') 
  * @param {{ error: string, code?: string }} payload
  */
 function sendJsonError(res, status, payload) {
+  if (res.headersSent) return;
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(payload));
 }
@@ -26,6 +28,7 @@ function sendJsonError(res, status, payload) {
  * @param {unknown} payload
  */
 function sendJson(res, payload) {
+  if (res.headersSent) return;
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(payload));
 }

@@ -49,12 +49,26 @@ function installRequireHook(options = {}) {
 
     if (result.skipped) {
       sourceCache.store(filename, source, null);
-      return module._compile(source, filename);
+      // Delegate to original handler chain with unmodified source.
+      // We temporarily override _compile so the chain sees our source
+      // without re-reading the file.
+      const originalCompile = module._compile.bind(module);
+      module._compile = function (code, file) {
+        module._compile = originalCompile;
+        return originalCompile(source, file);
+      };
+      return originalJsHandler(module, filename);
     }
 
     sourceCache.store(filename, source, result.map);
 
-    return module._compile(result.code, filename);
+    // Delegate to original handler chain with transformed source.
+    const originalCompile = module._compile.bind(module);
+    module._compile = function (code, file) {
+      module._compile = originalCompile;
+      return originalCompile(result.code, file);
+    };
+    return originalJsHandler(module, filename);
   };
 
   const { logger } = require('../lib/logger');

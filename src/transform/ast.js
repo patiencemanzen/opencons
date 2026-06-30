@@ -25,7 +25,7 @@ function probeLabel(filename, line, kind, projectRoot) {
     }
   }
 
-  return `${kind}:${relative}:${line}`;
+  return `${kind}|${relative}|${line}`;
 }
 
 /**

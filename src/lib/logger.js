@@ -5,8 +5,8 @@
 const LEVELS = /** @type {const} */ ({ debug: 0, info: 1, warn: 2, error: 3 });
 
 /** @type {LogLevel} */
-const logLevel = process.env.OPENCONS_LOG_LEVEL || process.env.ROUTEGRAPHER_LOG_LEVEL;
-let minLevel = logLevel === 'debug' ? 'debug' : 'info';
+const envLogLevel = process.env.OPENCONS_LOG_LEVEL || process.env.ROUTEGRAPHER_LOG_LEVEL;
+let minLevel = (envLogLevel in LEVELS) ? envLogLevel : 'info';
 
 const PREFIX = '[Opencons]';
 

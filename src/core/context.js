@@ -36,9 +36,30 @@ function getCurrentTracer() {
   return ctx ? ctx.tracer : null;
 }
 
+/**
+ * Attach the trace context to a request object so it can be recovered
+ * in callback-style async paths where AsyncLocalStorage is unavailable.
+ * @param {object} req
+ * @param {TraceContext} context
+ */
+function attachContextToReq(req, context) {
+  req.__openconsContext = context;
+}
+
+/**
+ * Recover a trace context from a request object (fallback when ALS is empty).
+ * @param {object} [req]
+ * @returns {TraceContext | undefined}
+ */
+function getContextFromReq(req) {
+  return req?.__openconsContext;
+}
+
 module.exports = {
   storage,
   runWithContext,
   getCurrentContext,
   getCurrentTracer,
+  attachContextToReq,
+  getContextFromReq,
 };

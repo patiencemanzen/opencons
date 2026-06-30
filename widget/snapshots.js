@@ -301,7 +301,18 @@ class SnapshotStore {
    * @param {object} data
    */
   _write(data) {
-    this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: SNAPSHOTS_VERSION, ...data }));
+    try {
+      this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: SNAPSHOTS_VERSION, ...data }));
+    } catch (err) {
+      if (err && err.name === 'QuotaExceededError') {
+        console.warn('[opencons] localStorage quota exceeded — snapshot could not be saved.');
+        if (typeof window !== 'undefined' && window.openconsShowStorageWarning) {
+          window.openconsShowStorageWarning();
+        }
+      } else {
+        throw err;
+      }
+    }
   }
 }
 

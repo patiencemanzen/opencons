@@ -55,6 +55,13 @@ function wrapMysqlMethod(original, operation) {
         operation,
         query: truncateQuery(sql || ''),
         params,
+        // mysql2 promise API resolves to [rows, fields]; extract rows before counting.
+        rowsFromResult: (res) => {
+          const rows = Array.isArray(res) ? res[0] : res;
+          if (Array.isArray(rows)) return rows.length;
+          if (rows != null && typeof rows.affectedRows === 'number') return rows.affectedRows;
+          return undefined;
+        },
       });
     }
 

@@ -79,12 +79,13 @@ function wrapNestInterceptor(interceptor) {
       return traceObservable(
         result,
         (exitReason) => {
-          recordStepSafe(alsContext, tracer, name, entered, true, exitReason);
+          const calledNext = !exitReason?.startsWith('error:');
+          recordStepSafe(alsContext, tracer, name, entered, calledNext, exitReason);
         },
         alsContext
       );
     } catch (err) {
-      recordStepSafe(alsContext, tracer, name, entered, false, `error: ${err.message}`);
+      recordStepSafe(alsContext, tracer, name, entered, false, `error: ${err?.message ?? String(err)}`);
       throw err;
     }
   };

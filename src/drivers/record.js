@@ -133,9 +133,15 @@ async function traceDbCall(fn, meta) {
 
   try {
     const result = await fn();
+    const rows =
+      meta.rows != null
+        ? meta.rows
+        : typeof meta.rowsFromResult === 'function'
+          ? meta.rowsFromResult(result)
+          : countRows(result);
     recordDbQuery({
       ...meta,
-      rows: meta.rows ?? countRows(result),
+      rows,
       duration_ms: Math.round((performance.now() - start) * 10) / 10,
     });
     return result;

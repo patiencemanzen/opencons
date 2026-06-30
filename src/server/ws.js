@@ -31,7 +31,8 @@ function createWebSocketServer(traceStore) {
         const message = JSON.parse(raw.toString());
 
         if (message.type === 'get_history') {
-          const history = traceStore.getAll(message.limit || 50);
+          const limit = Math.min(100, Math.max(1, Number(message.limit) || 50));
+          const history = traceStore.getAll(limit);
           socket.send(JSON.stringify({ type: 'history', payload: history }));
           return;
         }
@@ -57,6 +58,30 @@ function createWebSocketServer(traceStore) {
   return wss;
 }
 
+/**
+ * Close all WebSocket connections and the server.
+ * @returns {Promise<void>}
+ */
+function closeWebSocketServer() {
+  if (!wss) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    wss.clients.forEach((client) => {
+      try {
+        client.terminate();
+      } catch {
+        // ignore errors during forced close
+      }
+    });
+
+    wss.close(() => {
+      wss = null;
+      resolve();
+    });
+  });
+}
+
 module.exports = {
   createWebSocketServer,
+  closeWebSocketServer,
 };

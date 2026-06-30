@@ -2,7 +2,6 @@
 
 const { createRequire } = require('module');
 const path = require('path');
-const fs = require('fs');
 
 /**
  * @param {string} packageName
@@ -14,7 +13,13 @@ function isPackageInstalled(packageName) {
     ...(require.main?.paths || []),
   ];
 
-  const hostRequire = createRequire(path.join(process.cwd(), 'package.json'));
+  // Prefer createRequire from cwd; fall back to __filename for monorepo setups.
+  let hostRequire;
+  try {
+    hostRequire = createRequire(path.join(process.cwd(), 'package.json'));
+  } catch {
+    hostRequire = createRequire(__filename);
+  }
 
   for (const base of searchPaths) {
     try {
@@ -25,8 +30,13 @@ function isPackageInstalled(packageName) {
     }
   }
 
-  const localNodeModules = path.join(process.cwd(), 'node_modules', packageName);
-  return fs.existsSync(localNodeModules);
+  // Final fallback using the module-scoped require (handles nested package layouts).
+  try {
+    require.resolve(packageName);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

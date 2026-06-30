@@ -14,6 +14,9 @@ let server = null;
 /** @type {number | null} */
 let listeningPort = null;
 
+/** @type {Promise<{ server: http.Server, port: number }> | null} */
+let creatingServer = null;
+
 const WIDGET_ROOT = path.join(__dirname, '..', '..', 'widget');
 
 const MIME_TYPES = {
@@ -37,9 +40,11 @@ function handleWidgetRequest(req, res) {
     }
 
     const urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
-    const filePath = path.normalize(path.join(WIDGET_ROOT, urlPath));
+    const resolvedRoot = path.resolve(WIDGET_ROOT);
+    const filePath = path.resolve(WIDGET_ROOT, '.' + urlPath);
+    const relative = path.relative(resolvedRoot, filePath);
 
-    if (!filePath.startsWith(WIDGET_ROOT)) {
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
       sendText(res, 403, 'Forbidden');
       return;
     }
@@ -70,7 +75,11 @@ function createStaticServer(port, maxAttempts = 10) {
     return Promise.resolve({ server, port: listeningPort });
   }
 
-  return new Promise((resolve, reject) => {
+  if (creatingServer) {
+    return creatingServer;
+  }
+
+  creatingServer = new Promise((resolve, reject) => {
     let attempt = 0;
 
     const tryListen = (candidatePort) => {
@@ -101,22 +110,46 @@ function createStaticServer(port, maxAttempts = 10) {
       httpServer.once('error', onError);
       httpServer.listen(candidatePort, () => {
         httpServer.removeListener('error', onError);
+        const actualPort = httpServer.address().port;
         server = httpServer;
-        listeningPort = candidatePort;
+        listeningPort = actualPort;
 
-        logger.info(`Widget → http://localhost:${candidatePort}`);
+        logger.info(`Widget → http://localhost:${actualPort}`);
 
-        if (candidatePort !== port) {
+        if (candidatePort !== 0 && candidatePort !== port) {
           logger.warn(
-            `Port ${port} was busy. Open http://localhost:${candidatePort} (not ${port}).`
+            `Port ${port} was busy. Open http://localhost:${actualPort} (not ${port}).`
           );
         }
 
-        resolve({ server: httpServer, port: candidatePort });
+        resolve({ server: httpServer, port: actualPort });
       });
     };
 
     tryListen(port);
+  });
+
+  creatingServer.finally(() => {
+    creatingServer = null;
+  });
+
+  return creatingServer;
+}
+
+/**
+ * Close the widget HTTP server and reset module state.
+ * @returns {Promise<void>}
+ */
+function closeStaticServer() {
+  creatingServer = null;
+  if (!server) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    server.close(() => {
+      server = null;
+      listeningPort = null;
+      resolve();
+    });
   });
 }
 
@@ -160,6 +193,7 @@ function handleSourceApi(req, res) {
 
 module.exports = {
   createStaticServer,
+  closeStaticServer,
   getServer,
   getListeningPort,
 };

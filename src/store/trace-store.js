@@ -2,6 +2,8 @@
 
 const { logger } = require('../lib/logger');
 
+const ACTIVE_TRACE_TTL_MS = 60_000;
+
 /**
  * In-memory store for active and completed trace graphs.
  * @param {number} maxTraces
@@ -9,6 +11,9 @@ const { logger } = require('../lib/logger');
 function createTraceStore(maxTraces = 100) {
   /** @type {Map<string, import('../core/tracer').TraceGraph>} */
   const active = new Map();
+
+  /** @type {Map<string, number>} */
+  const activeStartTimes = new Map();
 
   /** @type {import('../core/tracer').TraceGraph[]} */
   const completed = [];
@@ -21,7 +26,14 @@ function createTraceStore(maxTraces = 100) {
    * @param {import('../core/tracer').TraceGraph} trace
    */
   function broadcast(type, trace) {
-    const message = JSON.stringify({ type, payload: trace });
+    let message;
+
+    try {
+      message = JSON.stringify({ type, payload: trace });
+    } catch (err) {
+      logger.debug('Failed to serialize trace for broadcast (circular reference?)', err);
+      return;
+    }
 
     for (const client of subscribers) {
       if (client.readyState !== 1) continue;
@@ -42,6 +54,7 @@ function createTraceStore(maxTraces = 100) {
      */
     start(trace) {
       active.set(trace.id, trace);
+      activeStartTimes.set(trace.id, Date.now());
       broadcast('trace_start', trace);
     },
 
@@ -61,6 +74,7 @@ function createTraceStore(maxTraces = 100) {
      */
     complete(trace) {
       active.delete(trace.id);
+      activeStartTimes.delete(trace.id);
       completed.unshift(trace);
 
       if (completed.length > maxTraces) {
@@ -82,7 +96,14 @@ function createTraceStore(maxTraces = 100) {
      * @param {number} [limit]
      */
     getAll(limit = 100) {
-      const activeTraces = Array.from(active.values()).sort((a, b) => b.timestamp - a.timestamp);
+      const now = Date.now();
+      for (const [id, startTime] of activeStartTimes) {
+        if (now - startTime > ACTIVE_TRACE_TTL_MS) {
+          active.delete(id);
+          activeStartTimes.delete(id);
+        }
+      }
+      const activeTraces = Array.from(active.values());
       const merged = [...activeTraces, ...completed];
       return merged.slice(0, limit);
     },

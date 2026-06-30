@@ -21,4 +21,28 @@ describe('resolveOptions', () => {
   it('rejects invalid exclude', () => {
     assert.throws(() => resolveOptions({ exclude: [1] }), ConfigurationError);
   });
+
+  it('allows enableWidget boolean', () => {
+    const opts = resolveOptions({ enableWidget: true });
+    assert.equal(opts.enableWidget, true);
+    const opts2 = resolveOptions({ enableWidget: false });
+    assert.equal(opts2.enableWidget, false);
+  });
+
+  it('honours maxTraces option', () => {
+    const opts = resolveOptions({ maxTraces: 50 });
+    assert.equal(opts.maxTraces, 50);
+  });
+
+  it('accepts an exclude array of strings', () => {
+    const opts = resolveOptions({ exclude: ['/health', '/metrics'] });
+    assert.deepEqual(opts.exclude, ['/health', '/metrics']);
+  });
+
+  it('allows opting out individual drivers', () => {
+    const opts = resolveOptions({ drivers: { pg: false, mysql2: false } });
+    assert.equal(opts.drivers.pg, false);
+    assert.equal(opts.drivers.mysql2, false);
+    assert.equal(opts.drivers.mongoose, true);
+  });
 });

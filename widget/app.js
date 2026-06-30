@@ -1,7 +1,16 @@
 'use strict';
 
 const WS_PORT = parseInt(window.location.port, 10) || 7331;
-const WS_URL = `ws://${window.location.hostname}:${WS_PORT}`;
+const WS_PROTO = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${WS_PROTO}//${window.location.hostname}:${WS_PORT}`;
+
+let wsReconnectDelay = 1000;
+const WS_RECONNECT_MAX = 30_000;
+
+const CLIENT_MAX_TRACES = 100;
+
+/** @type {Set<string>} IDs already rendered in the list — used to animate new arrivals */
+const renderedTraceIds = new Set();
 
 /** @type {Map<string, object>} */
 const traces = new Map();
@@ -72,6 +81,7 @@ function connect() {
 
   socket.addEventListener('open', () => {
     wsConnected = true;
+    wsReconnectDelay = 1000;
     setConnectionStatus(true);
     renderRequestList();
     socket.send(JSON.stringify({ type: 'get_history', limit: 50 }));
@@ -80,13 +90,21 @@ function connect() {
   socket.addEventListener('close', () => {
     wsConnected = false;
     historyLoaded = false;
-    setConnectionStatus(false, 'Reconnecting…');
+    setConnectionStatus(false, `Reconnecting in ${Math.round(wsReconnectDelay / 1000)}s…`);
     renderRequestList();
-    setTimeout(connect, 2000);
+    setTimeout(connect, wsReconnectDelay);
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, WS_RECONNECT_MAX);
   });
 
   socket.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data);
+    let message;
+
+    try {
+      message = JSON.parse(event.data);
+    } catch (err) {
+      console.debug('[opencons] Received malformed WebSocket message', err);
+      return;
+    }
 
     switch (message.type) {
       case 'trace_start':
@@ -120,6 +138,17 @@ function upsertTrace(trace, options = {}) {
   const previous = traces.get(trace.id);
   const isNew = !previous;
   traces.set(trace.id, trace);
+
+  // Evict oldest completed traces once the client map exceeds the cap.
+  if (isNew && traces.size > CLIENT_MAX_TRACES) {
+    for (const [id, t] of traces) {
+      if (t.state !== 'active') {
+        traces.delete(id);
+        if (traces.size <= CLIENT_MAX_TRACES) break;
+      }
+    }
+  }
+
   renderRequestList();
   refreshHomeIfVisible();
 
@@ -202,15 +231,16 @@ function createTraceListItem(trace, options = {}) {
   const statusLabel = trace.state === 'active' ? '…' : (trace.status ?? '—');
   const durationLabel = trace.state === 'active' ? 'running' : `${trace.duration_ms}ms`;
 
+  const safeMethod = sanitizeMethod(trace.method);
   li.innerHTML = `
     <div>
-      ${options.nested ? '' : `<span class="method method-${trace.method}">${trace.method}</span>`}
+      ${options.nested ? '' : `<span class="method method-${safeMethod}">${safeMethod}</span>`}
       ${options.nested ? `<span class="request-run-label">${formatTime(trace.timestamp)}</span>` : `<span class="url">${escapeHtml(trace.url)}</span>`}
       ${trace.state === 'active' ? '<span class="live-dot" title="In progress"></span>' : ''}
     </div>
     <div class="request-meta">
-      <span class="status-badge ${statusClass}">${statusLabel}</span>
-      <span>${durationLabel}</span>
+      <span class="status-badge ${statusClass}">${escapeHtml(String(statusLabel))}</span>
+      <span>${escapeHtml(durationLabel)}</span>
       ${options.nested ? '' : `<span>${formatTime(trace.timestamp)}</span>`}
     </div>
   `;
@@ -232,10 +262,27 @@ function renderRequestList() {
   els.requestItems.innerHTML = '';
 
   if (items.length === 0) {
-    if (!wsConnected) {
-      els.emptyState.innerHTML = loaderHtml('Connecting…');
-    } else if (!historyLoaded) {
-      els.emptyState.innerHTML = loaderHtml('Loading traces…');
+    if (!wsConnected || !historyLoaded) {
+      // Show skeleton placeholder rows while connecting or loading history.
+      const widths = ['medium', 'short', 'long', 'medium'];
+      widths.forEach((w) => {
+        const sk = document.createElement('li');
+        sk.className = 'skeleton-request-item';
+        sk.setAttribute('aria-hidden', 'true');
+        sk.innerHTML = `
+          <div class="sk-row">
+            <span class="skeleton sk-method"></span>
+            <span class="skeleton sk-url ${w}"></span>
+          </div>
+          <div class="sk-meta">
+            <span class="skeleton sk-badge"></span>
+            <span class="skeleton sk-dur"></span>
+            <span class="skeleton sk-time"></span>
+          </div>
+        `;
+        els.requestItems.appendChild(sk);
+      });
+      els.emptyState.style.display = 'none';
     } else {
       els.emptyState.textContent = 'Listening for requests…';
     }
@@ -252,7 +299,12 @@ function renderRequestList() {
     }
 
     if (group.traces.length === 1) {
-      els.requestItems.appendChild(createTraceListItem(group.traces[0]));
+      const listItem = createTraceListItem(group.traces[0]);
+      if (!renderedTraceIds.has(group.traces[0].id)) {
+        listItem.classList.add('item-enter');
+      }
+      renderedTraceIds.add(group.traces[0].id);
+      els.requestItems.appendChild(listItem);
       continue;
     }
 
@@ -275,17 +327,18 @@ function renderRequestList() {
 
     const header = document.createElement('div');
     header.className = headerClasses.join(' ');
+    const safeGroupMethod = sanitizeMethod(group.method);
     header.innerHTML = `
       <div class="request-group-title">
         <span class="group-chevron" aria-hidden="true">${isExpanded ? '▾' : '▸'}</span>
-        <span class="method method-${group.method}">${group.method}</span>
+        <span class="method method-${safeGroupMethod}">${safeGroupMethod}</span>
         <span class="url">${escapeHtml(group.url)}</span>
         <span class="group-count" title="${group.traces.length} requests">${group.traces.length}</span>
         ${hasInFlight ? '<span class="live-dot" title="In progress"></span>' : ''}
       </div>
       <div class="request-meta">
-        <span class="status-badge ${latestStatusClass}">${latestStatusLabel}</span>
-        <span>${latestDuration}</span>
+        <span class="status-badge ${latestStatusClass}">${escapeHtml(String(latestStatusLabel))}</span>
+        <span>${escapeHtml(latestDuration)}</span>
         <span>latest</span>
       </div>
     `;
@@ -311,6 +364,10 @@ function renderRequestList() {
 
       groupLi.appendChild(childList);
     }
+
+    const isNewGroup = group.traces.every((t) => !renderedTraceIds.has(t.id));
+    if (isNewGroup) groupLi.classList.add('item-enter');
+    group.traces.forEach((t) => renderedTraceIds.add(t.id));
 
     els.requestItems.appendChild(groupLi);
   }
@@ -561,11 +618,21 @@ function formatTime(ts) {
  * @param {string} str
  */
 function escapeHtml(str) {
-  return str
+  if (str == null) return '';
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+const VALID_HTTP_METHOD = /^[A-Z]+$/;
+
+function sanitizeMethod(method) {
+  if (typeof method === 'string' && VALID_HTTP_METHOD.test(method)) {
+    return method;
+  }
+  return 'UNKNOWN';
 }
 
 document.getElementById('graph-zoom-in')?.addEventListener('click', () => {
@@ -678,9 +745,10 @@ function renderSnapshotList() {
     const title = snapshot.label || formatSnapshotDate(snapshot.saved_at);
     const metrics = snapshot.metrics || {};
 
+    const safeSnapMethod = sanitizeMethod(method);
     li.innerHTML = `
       <div>
-        <span class="method method-${method}">${method}</span>
+        <span class="method method-${safeSnapMethod}">${safeSnapMethod}</span>
         <span class="url">${escapeHtml(url)}</span>
       </div>
       <div class="request-meta">
@@ -859,6 +927,14 @@ function formatSnapshotDate(iso) {
 /**
  * @param {'home' | 'requests' | 'snapshots'} panel
  */
+function animatePanelEnter(el) {
+  if (!el) return;
+  el.classList.remove('panel-enter');
+  // Force reflow so re-adding the class restarts the animation.
+  void el.offsetWidth;
+  el.classList.add('panel-enter');
+}
+
 function switchPanel(panel) {
   activePanel = panel;
   syncPanelUi();
@@ -868,17 +944,20 @@ function switchPanel(panel) {
     els.traceTitle.textContent = 'App analytics';
     els.comparisonBanner?.classList.add('hidden');
     renderHomeDashboard();
+    animatePanelEnter(els.homeBody);
   } else if (panel === 'snapshots') {
     els.headerEyebrow.textContent = 'Snapshots';
     els.traceTitle.textContent = 'Snapshots';
     els.comparisonBanner?.classList.add('hidden');
     renderSnapshotList();
+    animatePanelEnter(els.snapshotBody);
     if (selectedSnapshotId) {
       setElementLoading(els.snapshotDetail, true, 'Loading snapshot…');
       requestAnimationFrame(() => renderSnapshotDetail(selectedSnapshotId));
     }
   } else {
     els.headerEyebrow.textContent = 'Execution trace';
+    animatePanelEnter(els.traceBody);
     if (selectedTraceId) {
       const trace = traces.get(selectedTraceId);
       if (trace) renderTraceDetail(trace);
@@ -896,13 +975,35 @@ function refreshHomeIfVisible() {
   }
 }
 
+function homeDashboardSkeletonHtml() {
+  const statCards = Array.from({ length: 4 }, () => `
+    <div class="skeleton-stat-card" aria-hidden="true">
+      <span class="skeleton sk-label"></span>
+      <span class="skeleton sk-value"></span>
+      <span class="skeleton sk-hint"></span>
+    </div>
+  `).join('');
+
+  const chartCards = Array.from({ length: 2 }, () => `
+    <div class="skeleton-chart-card" aria-hidden="true">
+      <span class="skeleton sk-title"></span>
+      <span class="skeleton sk-chart"></span>
+    </div>
+  `).join('');
+
+  return `
+    <div class="stats-grid">${statCards}</div>
+    <div class="charts-grid">${chartCards}</div>
+  `;
+}
+
 function renderHomeDashboard() {
   if (!els.homeDashboard || !window.OpenconsAnalytics) return;
 
   const loading = traces.size === 0 && (!wsConnected || !historyLoaded);
 
   if (loading) {
-    els.homeDashboard.innerHTML = `<div class="home-empty">${loaderHtml('Loading analytics…')}</div>`;
+    els.homeDashboard.innerHTML = homeDashboardSkeletonHtml();
     return;
   }
 
@@ -923,7 +1024,12 @@ function syncPanelUi() {
   document.querySelectorAll('.nav-item[data-panel]').forEach((button) => {
     const isActive = button.dataset.panel === activePanel;
     button.classList.toggle('active', isActive);
-    button.toggleAttribute('aria-current', isActive);
+    button.setAttribute('aria-selected', String(isActive));
+    if (isActive) {
+      button.setAttribute('aria-current', 'page');
+    } else {
+      button.removeAttribute('aria-current');
+    }
   });
 
   els.requestsSection?.classList.toggle('hidden', activePanel !== 'requests');
@@ -994,8 +1100,48 @@ document.querySelectorAll('.nav-item[data-panel]').forEach((button) => {
   button.addEventListener('click', () => {
     if (button.disabled) return;
     switchPanel(button.dataset.panel);
+    closeMobileSidebar();
   });
 });
+
+// Mobile sidebar toggle
+(function initMobileSidebar() {
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+
+  if (!toggleBtn || !sidebar || !backdrop) return;
+
+  function openMobileSidebar() {
+    sidebar.classList.add('sidebar-open');
+    backdrop.classList.add('sidebar-open');
+    toggleBtn.setAttribute('aria-expanded', 'true');
+    toggleBtn.setAttribute('aria-label', 'Close navigation');
+    toggleBtn.textContent = '✕';
+  }
+
+  window.closeMobileSidebar = function closeMobileSidebar() {
+    sidebar.classList.remove('sidebar-open');
+    backdrop.classList.remove('sidebar-open');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+    toggleBtn.setAttribute('aria-label', 'Open navigation');
+    toggleBtn.textContent = '☰';
+  };
+
+  toggleBtn.addEventListener('click', () => {
+    if (sidebar.classList.contains('sidebar-open')) {
+      window.closeMobileSidebar();
+    } else {
+      openMobileSidebar();
+    }
+  });
+
+  backdrop.addEventListener('click', () => window.closeMobileSidebar());
+})();
+
+function closeMobileSidebar() {
+  if (window.closeMobileSidebar) window.closeMobileSidebar();
+}
 
 renderSnapshotList();
 syncPanelUi();

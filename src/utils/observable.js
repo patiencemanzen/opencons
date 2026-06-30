@@ -64,6 +64,17 @@ function traceObservable(source, onFinish, alsContext) {
   const loaded = loadRxjs();
 
   if (!loaded?.rxjs?.Observable) {
+    // RxJS not available — subscribe directly using the observable protocol so
+    // onFinish is always called, even without RxJS in the host project.
+    try {
+      source.subscribe({
+        next: () => {},
+        error: (err) => finish(`error: ${err?.message ?? String(err)}`),
+        complete: () => finish(),
+      });
+    } catch (err) {
+      finish(`error: ${err?.message ?? String(err)}`);
+    }
     return source;
   }
 
@@ -76,7 +87,7 @@ function traceObservable(source, onFinish, alsContext) {
       innerSub = source.subscribe({
         next: (value) => subscriber.next(value),
         error: (err) => {
-          finish(`error: ${err.message}`);
+          finish(`error: ${err?.message ?? String(err)}`);
           subscriber.error(err);
         },
         complete: () => {

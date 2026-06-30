@@ -14,10 +14,22 @@ function describeMongooseQuery(query) {
   const update =
     typeof query.getUpdate === 'function' ? query.getUpdate() : undefined;
 
-  let text = `${op} ${JSON.stringify(filter)}`;
-  if (update) {
-    text += ` update=${JSON.stringify(update)}`;
+  let filterStr = '[unserializable]';
+  let updateStr = '';
+  try {
+    filterStr = JSON.stringify(filter);
+  } catch {
+    // BSON types or circular refs — fall back to plain text
   }
+  if (update) {
+    try {
+      updateStr = ` update=${JSON.stringify(update)}`;
+    } catch {
+      updateStr = ' update=[unserializable]';
+    }
+  }
+
+  let text = `${op} ${filterStr}${updateStr}`;
 
   return {
     operation: op,

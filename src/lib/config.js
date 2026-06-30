@@ -85,7 +85,7 @@ function resolveOptions(userOptions = {}) {
   };
 
   options.port = requirePositiveInt(options.port, 'port');
-  options.maxTraces = requirePositiveInt(options.maxTraces, 'maxTraces');
+  options.maxTraces = Math.min(requirePositiveInt(options.maxTraces, 'maxTraces'), 1000);
   options.exclude = requireStringArray(options.exclude, 'exclude');
   options.transform.exclude = requireStringArray(options.transform.exclude, 'transform.exclude');
 

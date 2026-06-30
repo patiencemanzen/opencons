@@ -2,6 +2,21 @@
 
 const { traceDbCall, truncateQuery, safeParams } = require('./record');
 
+/**
+ * Return an accurate row count for the wide variety of Prisma result shapes.
+ * @param {string} action
+ * @param {unknown} result
+ */
+function prismaRowCount(action, result) {
+  if (result == null) return 0;
+  if (Array.isArray(result)) return result.length;
+  if (typeof result === 'number') return result;
+  if (typeof result === 'object' && result !== null && 'count' in result) {
+    return Number(result.count);
+  }
+  return 1;
+}
+
 /** @type {WeakSet<object>} */
 const patchedClients = new WeakSet();
 
@@ -29,7 +44,7 @@ function patchPrismaClient(client) {
         collection: params.model,
         query: truncateQuery(query),
         params: safeParams(params.args),
-        rows: Array.isArray(result) ? result.length : result == null ? 0 : 1,
+        rows: prismaRowCount(params.action, result),
         duration_ms: Math.round((performance.now() - start) * 10) / 10,
       });
 

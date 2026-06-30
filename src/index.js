@@ -10,7 +10,7 @@
  * Require this module before express() and call opencons() as the first middleware.
  */
 
-const { createOpencons } = require('./core');
+const { createOpencons, shutdown } = require('./core');
 const { patchExpressGlobally } = require('./interceptors/express');
 const { applyToNest, createNestMiddleware } = require('./integrations/nest');
 const { label } = require('./utils/label');
@@ -23,6 +23,7 @@ const opencons = createOpencons;
 opencons.applyToNest = applyToNest;
 opencons.createNestMiddleware = createNestMiddleware;
 opencons.label = label;
+opencons.shutdown = shutdown;
 
 module.exports = opencons;
 module.exports.default = opencons;

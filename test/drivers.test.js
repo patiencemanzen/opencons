@@ -1,6 +1,6 @@
 'use strict';
 
-const { describe, it } = require('node:test');
+const { describe, it, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { runWithContext } = require('../src/core/context');
 const { TraceTracer } = require('../src/core/tracer');
@@ -95,6 +95,11 @@ describe('database capture', () => {
     }
 
     const original = session.NodePgPreparedQuery.prototype.execute;
+
+    after(() => {
+      session.NodePgPreparedQuery.prototype.execute = original;
+    });
+
     const backends = patchDrizzle();
     assert.ok(backends.includes('node-postgres'));
     assert.notEqual(session.NodePgPreparedQuery.prototype.execute, original);
@@ -112,6 +117,11 @@ describe('database capture', () => {
 
     const { Client } = pg;
     const original = Client.prototype.query;
+
+    after(() => {
+      Client.prototype.query = original;
+    });
+
     const patched = patchPg();
     assert.equal(patched, true);
     assert.notEqual(Client.prototype.query, original);

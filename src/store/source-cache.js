@@ -3,11 +3,20 @@
 const fs = require('fs');
 const path = require('path');
 
+const MAX_CACHE_ENTRIES = 500;
+
 /** @type {Map<string, { source: string, map: object | null, filename: string }>} */
 const cache = new Map();
 
 /** @type {string | null} */
 let projectRoot = null;
+
+function evictOldestIfNeeded() {
+  if (cache.size > MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    cache.delete(oldestKey);
+  }
+}
 
 /**
  * @param {string} root
@@ -28,6 +37,7 @@ function store(filename, source, map) {
     source,
     map,
   });
+  evictOldestIfNeeded();
 }
 
 /**
@@ -41,6 +51,7 @@ function storeOriginal(filename) {
   try {
     const source = fs.readFileSync(filename, 'utf8');
     cache.set(key, { filename, source, map: null });
+    evictOldestIfNeeded();
   } catch {
     // unreadable source — widget peek will return 404
   }

@@ -65,7 +65,7 @@ class TraceTracer {
    * @param {unknown} [meta.body]
    */
   constructor(meta) {
-    this.id = `req_${randomBytes(4).toString('hex')}`;
+    this.id = `req_${randomBytes(8).toString('hex')}`;
     this.timestamp = Date.now();
     this.method = meta.method;
     this.url = meta.url;
@@ -195,8 +195,8 @@ class TraceTracer {
       status: this.status,
       state: 'active',
       duration_ms: Math.round((performance.now() - this.startTime) * 10) / 10,
-      nodes: this.nodes,
-      edges: this.edges,
+      nodes: this.nodes.slice(),
+      edges: this.edges.slice(),
     };
   }
 
@@ -241,8 +241,8 @@ class TraceTracer {
       status: this.status,
       state: 'complete',
       duration_ms,
-      nodes: this.nodes,
-      edges: this.edges,
+      nodes: this.nodes.slice(),
+      edges: this.edges.slice(),
     };
   }
 }

@@ -14,12 +14,15 @@ describe('logger', () => {
     let called = false;
 
     const original = console.log;
-    console.log = () => {
-      called = true;
-    };
+    try {
+      console.log = () => {
+        called = true;
+      };
 
-    logger.debug('hidden');
-    console.log = original;
+      logger.debug('hidden');
+    } finally {
+      console.log = original;
+    }
 
     assert.equal(called, false);
   });

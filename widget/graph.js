@@ -140,8 +140,12 @@ window.OpenconsGraph = {
 
     const nodeGroups = g
       .selectAll('.graph-node')
-      .data(layout.nodes)
-      .join('g')
+      .data(layout.nodes, (d) => d.id)
+      .join(
+        (enter) => enter.append('g').classed('node-enter', true),
+        (update) => update,
+        (exit) => exit.remove()
+      )
       .attr('class', (d) =>
         [
           'graph-node',
@@ -1012,7 +1016,7 @@ function showTooltip(event, node, tooltip) {
 
   if (node.outcomes?.length) {
     const outcomeText = node.outcomes
-      .map((outcome) => `${outcome.taken ? '✓' : '○'} ${outcome.label}`)
+      .map((outcome) => `${outcome.taken ? '✓' : '○'} ${escapeHtml(outcome.label)}`)
       .join('<br>');
     lines.push(`<dt>Branches</dt><dd>${outcomeText}</dd>`);
   }
@@ -1026,7 +1030,7 @@ function showTooltip(event, node, tooltip) {
           const lang = window.OpenconsDbLanguage;
           const title = lang ? lang.dbNodeTitle(query) : query.label;
           const result = lang ? lang.dbNodeResult(query) : query.db_result;
-          return `${title} → ${result}`;
+          return `${escapeHtml(title)} → ${escapeHtml(result)}`;
         })
         .join('<br>');
       lines.push(`<dt>Queries</dt><dd>${queryLines}</dd>`);
@@ -1160,7 +1164,8 @@ function truncate(str, max) {
  * @param {string} str
  */
 function escapeHtml(str) {
-  return str
+  if (str == null) return '';
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');

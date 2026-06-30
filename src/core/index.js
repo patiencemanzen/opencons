@@ -1,10 +1,11 @@
 'use strict';
 
-const { runWithContext, getCurrentContext } = require('./context');
+const { runWithContext, getCurrentContext, attachContextToReq } = require('./context');
 const { TraceTracer } = require('./tracer');
 const { createTraceStore } = require('../store/trace-store');
 const { createWebSocketServer } = require('../server/ws');
-const { createStaticServer } = require('../server/static');
+const { createStaticServer, closeStaticServer } = require('../server/static');
+const { closeWebSocketServer } = require('../server/ws');
 const { installRequireHook } = require('../interceptors/require-hook');
 const { installDrivers } = require('../drivers');
 const { resolveOptions, isProductionDisabled } = require('../lib/config');
@@ -42,11 +43,8 @@ function createOpencons(userOptions = {}) {
   }
 
   if (initialised) {
-    if (activeOptions && JSON.stringify(activeOptions) !== JSON.stringify(options)) {
-      logger.warn('Already initialised — additional options are ignored. Call opencons() once.');
-    }
-
-    return buildMiddleware(options);
+    logger.warn('Already initialised — additional call is ignored. Call opencons() only once.');
+    return buildMiddleware(activeOptions);
   }
 
   initialised = true;
@@ -140,6 +138,10 @@ function buildMiddleware(options) {
     const onFinish = () => {
       if (finished) return;
       finished = true;
+      res.off('finish', onFinish);
+      res.off('close', onFinish);
+      // Flush any in-flight probe updates before sealing.
+      traceStore.update(tracer.snapshot());
       tracer.onChange = null;
       traceStore.complete(tracer.finish(res.statusCode, capturedResponse));
     };
@@ -147,6 +149,7 @@ function buildMiddleware(options) {
     res.on('finish', onFinish);
     res.on('close', onFinish);
 
+    attachContextToReq(req, context);
     runWithContext(context, () => next());
   }
 
@@ -179,20 +182,43 @@ function attachResponseCapture(res, onCapture) {
  * @param {import('express').Request} req
  * @param {string[]} excludePatterns
  */
+/**
+ * Escape special regex metacharacters except `*` which we expand to `.*`.
+ * @param {string} str
+ */
+function escapeRegexExceptStar(str) {
+  return str.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+}
+
 function shouldExclude(req, excludePatterns) {
-  const path = req.originalUrl || req.url;
+  const urlPath = (req.originalUrl || req.url).split('?')[0];
 
   return excludePatterns.some((pattern) => {
     if (pattern.includes('*')) {
-      const regex = new RegExp(
-        `^${pattern.replace(/\*/g, '.*').replace(/\//g, '\\/')}$`
-      );
-      return regex.test(path.split('?')[0]);
+      const escaped = escapeRegexExceptStar(pattern).replace(/\*/g, '.*');
+      const regex = new RegExp(`^${escaped}$`);
+      return regex.test(urlPath);
     }
-    return path.startsWith(pattern);
+    // Anchor prefix matches to segment boundaries to avoid `/api` matching `/apiv2`
+    const withTrailing = pattern.endsWith('/') ? pattern : `${pattern}/`;
+    return urlPath === pattern || urlPath.startsWith(withTrailing);
   });
+}
+
+/**
+ * Close the widget HTTP and WebSocket servers and release module state.
+ * Useful in tests and hot-reload scenarios to avoid dangling listeners.
+ * @returns {Promise<void>}
+ */
+async function shutdown() {
+  await closeWebSocketServer();
+  await closeStaticServer();
+  traceStore = null;
+  initialised = false;
+  activeOptions = null;
 }
 
 module.exports = {
   createOpencons,
+  shutdown,
 };

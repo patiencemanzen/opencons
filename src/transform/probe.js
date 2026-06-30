@@ -12,7 +12,10 @@ const {
  * @param {string} label
  */
 function parseProbeLabel(label) {
-  const parts = String(label).split(':');
+  // Labels are formatted as `kind|file|line` (pipe-delimited to be safe on Windows).
+  // Legacy labels used `:` — fall back gracefully.
+  const separator = label.includes('|') ? '|' : ':';
+  const parts = String(label).split(separator);
   const kind = parts[0] || 'branch';
   const file = parts[1] || '';
   const line = Number(parts[2]) || null;
@@ -37,9 +40,42 @@ function __rg_probe(label, value, conditionText, hasElse = false) {
   }
 
   const meta = parseProbeLabel(label);
-  const nodeType = meta.kind === 'while' || meta.kind === 'for' ? 'loop' : 'branch';
+  const isLoop = meta.kind === 'while' || meta.kind === 'for';
+  const nodeType = isLoop ? 'loop' : 'branch';
   const title = decisionTitle(meta.kind, conditionText || null);
   const summary = decisionSummary(meta.kind, value, hasElse);
+
+  if (isLoop) {
+    // Collapse all iterations into a single node updated in place.
+    const existingLoop = tracer.nodes.find(
+      (n) =>
+        n.type === 'loop' &&
+        n.source?.file === meta.file &&
+        n.source?.line === meta.line
+    );
+
+    if (existingLoop) {
+      existingLoop.iterations = (existingLoop.iterations || 1) + 1;
+      existingLoop.summary = `Looped ${existingLoop.iterations} times`;
+      // Throttle onChange: notify at most every 10 iterations.
+      if (existingLoop.iterations % 10 === 0) {
+        tracer._notifyChange();
+      }
+      return value;
+    }
+
+    tracer.addNode({
+      type: nodeType,
+      label: title,
+      summary: 'Looped 1 time',
+      iterations: 1,
+      condition: conditionText || undefined,
+      duration_ms: null,
+      source: meta.file ? { file: meta.file, line: meta.line, kind: meta.kind } : undefined,
+    });
+
+    return value;
+  }
 
   const node = {
     type: nodeType,
@@ -60,10 +96,15 @@ function __rg_probe(label, value, conditionText, hasElse = false) {
 
   if (meta.kind === 'if' || meta.kind === 'ternary') {
     node.outcomes = buildIfOutcomes(value, hasElse);
-    node.taken_outcome = Boolean(value) ? 'then' : null;
+    node.taken_outcome = Boolean(value) ? 'then' : (meta.kind === 'ternary' ? 'else' : null);
   }
 
-  tracer.addNode(node);
+  const addedNode = tracer.addNode(node);
+
+  if (meta.kind === 'if' && meta.file) {
+    if (!tracer._ifNodeMap) tracer._ifNodeMap = new Map();
+    tracer._ifNodeMap.set(`${meta.file}|${meta.line}`, addedNode);
+  }
 
   return value;
 }
@@ -79,14 +120,12 @@ function __rg_else_probe(label) {
   }
 
   const meta = parseProbeLabel(label.replace(/^else/, 'if'));
-  const lastIf = [...tracer.nodes]
-    .reverse()
-    .find(
-      (node) =>
-        node.source?.kind === 'if' &&
-        node.source.file === meta.file &&
-        node.source.line === meta.line
-    );
+
+  // Use tracer's keyed if-node map for O(1) lookup instead of O(n) reverse scan.
+  const ifKey = `${meta.file}|${meta.line}`;
+  if (!tracer._ifNodeMap) tracer._ifNodeMap = new Map();
+
+  const lastIf = tracer._ifNodeMap.get(ifKey);
 
   if (lastIf) {
     Object.assign(lastIf, applyElseTaken(lastIf));

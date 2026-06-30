@@ -115,113 +115,202 @@ function wrapHandler(handler) {
   if (handler.__openconsWrapped) return handler;
 
   const name = resolveHandlerName(handler);
+  const isErrorHandler = handler.length > 3;
 
-  function wrapped(req, res, next) {
-    const tracer = getCurrentTracer();
+  let wrapped;
 
-    if (!tracer) {
-      return handler(req, res, next);
-    }
+  if (isErrorHandler) {
+    wrapped = function wrappedErrorHandler(err, req, res, next) {
+      const tracer = getCurrentTracer();
 
-    const entered = performance.now();
-    let calledNext = false;
-    let exitReason = null;
-    let exited = false;
-
-    const wrappedNext = (...nextArgs) => {
-      calledNext = true;
-
-      if (!exited) {
-        exited = true;
-        recordMiddlewareExit();
+      if (!tracer) {
+        return handler(err, req, res, next);
       }
 
-      return next(...nextArgs);
+      const entered = performance.now();
+      let calledNext = false;
+      let exitReason = null;
+      let exited = false;
+
+      const recordExit = () => {
+        tracer.addNode({
+          type: 'middleware',
+          label: name,
+          duration_ms: Math.round((performance.now() - entered) * 10) / 10,
+          called_next: calledNext,
+          exit_reason: exitReason || undefined,
+        });
+      };
+
+      const wrappedNext = (...nextArgs) => {
+        calledNext = true;
+        if (!exited) {
+          exited = true;
+          recordExit();
+        }
+        return next(...nextArgs);
+      };
+
+      // Snapshot the current res methods before patching to form a proper chain.
+      const prevStatus = res.status;
+      const prevJson = res.json;
+      const prevSend = res.send;
+      const prevEnd = res.end;
+
+      res.status = function patchedStatus(code) {
+        if (!calledNext && !exited) exitReason = `res.status(${code})`;
+        return prevStatus.apply(this, arguments);
+      };
+      res.json = function patchedJson() {
+        if (!calledNext && !exited) exitReason = 'res.json(...)';
+        return prevJson.apply(this, arguments);
+      };
+      res.send = function patchedSend() {
+        if (!calledNext && !exited) exitReason = 'res.send(...)';
+        return prevSend.apply(this, arguments);
+      };
+      res.end = function patchedEnd(...endArgs) {
+        if (!calledNext && !exited) {
+          exitReason = 'res.end(...)';
+          exited = true;
+          recordExit();
+        }
+        return prevEnd.apply(this, endArgs);
+      };
+
+      try {
+        const result = handler(err, req, res, wrappedNext);
+
+        if (result && typeof result.then === 'function') {
+          result
+            .catch((e) => {
+              if (!exited) {
+                exitReason = `error: ${e?.message ?? String(e)}`;
+                exited = true;
+                recordExit();
+              }
+              if (!calledNext) next(e);
+            })
+            .finally(() => {
+              if (!exited) {
+                exited = true;
+                recordExit();
+              }
+            });
+        }
+
+        return result;
+      } catch (e) {
+        if (!exited) {
+          exitReason = `error: ${e?.message ?? String(e)}`;
+          exited = true;
+          recordExit();
+        }
+        throw e;
+      }
     };
+  } else {
+    wrapped = function wrappedHandler(req, res, next) {
+      const tracer = getCurrentTracer();
 
-    const recordMiddlewareExit = () => {
-      const duration_ms = Math.round((performance.now() - entered) * 10) / 10;
+      if (!tracer) {
+        return handler(req, res, next);
+      }
 
-      tracer.addNode({
-        type: 'middleware',
-        label: name,
-        duration_ms,
-        called_next: calledNext,
-        exit_reason: exitReason || undefined,
-      });
+      const entered = performance.now();
+      let calledNext = false;
+      let exitReason = null;
+      let exited = false;
+
+      const recordMiddlewareExit = () => {
+        const duration_ms = Math.round((performance.now() - entered) * 10) / 10;
+
+        tracer.addNode({
+          type: 'middleware',
+          label: name,
+          duration_ms,
+          called_next: calledNext,
+          exit_reason: exitReason || undefined,
+        });
+      };
+
+      const wrappedNext = (...nextArgs) => {
+        calledNext = true;
+
+        if (!exited) {
+          exited = true;
+          recordMiddlewareExit();
+        }
+
+        return next(...nextArgs);
+      };
+
+      // Snapshot the current res methods to form a proper chain.
+      const prevStatus = res.status;
+      const prevJson = res.json;
+      const prevSend = res.send;
+      const prevEnd = res.end;
+
+      res.status = function patchedStatus(code) {
+        if (!calledNext && !exited) exitReason = `res.status(${code})`;
+        return prevStatus.apply(this, arguments);
+      };
+      res.json = function patchedJson() {
+        if (!calledNext && !exited) exitReason = 'res.json(...)';
+        return prevJson.apply(this, arguments);
+      };
+      res.send = function patchedSend() {
+        if (!calledNext && !exited) exitReason = 'res.send(...)';
+        return prevSend.apply(this, arguments);
+      };
+      res.end = function patchedEnd(...endArgs) {
+        if (!calledNext && !exited) {
+          exitReason = 'res.end(...)';
+          exited = true;
+          recordMiddlewareExit();
+        }
+        return prevEnd.apply(this, endArgs);
+      };
+
+      try {
+        const result = handler(req, res, wrappedNext);
+
+        if (result && typeof result.then === 'function') {
+          result
+            .catch((err) => {
+              if (!exited) {
+                exitReason = `error: ${err?.message ?? String(err)}`;
+                exited = true;
+                recordMiddlewareExit();
+              }
+              if (!calledNext) next(err);
+            })
+            .finally(() => {
+              if (!exited) {
+                exited = true;
+                recordMiddlewareExit();
+              }
+            });
+        } else if (!exited && !res.headersSent && !calledNext) {
+          // Synchronous handler that did not call next or send a response yet.
+          // Defer exit recording until response is sent or next is called.
+        }
+
+        return result;
+      } catch (err) {
+        if (!exited) {
+          exitReason = `error: ${err?.message ?? String(err)}`;
+          exited = true;
+          recordMiddlewareExit();
+        }
+        throw err;
+      }
     };
-
-    const originalStatus = res.status.bind(res);
-    res.status = function patchedStatus(code) {
-      if (!calledNext && !exited) {
-        exitReason = `res.status(${code})`;
-      }
-      return originalStatus(code);
-    };
-
-    const originalJson = res.json.bind(res);
-    res.json = function patchedJson(body) {
-      if (!calledNext && !exited) {
-        exitReason = 'res.json(...)';
-      }
-      return originalJson(body);
-    };
-
-    const originalSend = res.send.bind(res);
-    res.send = function patchedSend(body) {
-      if (!calledNext && !exited) {
-        exitReason = 'res.send(...)';
-      }
-      return originalSend(body);
-    };
-
-    const originalEnd = res.end.bind(res);
-    res.end = function patchedEnd(...endArgs) {
-      if (!calledNext && !exited) {
-        exitReason = 'res.end(...)';
-        exited = true;
-        recordMiddlewareExit();
-      }
-      return originalEnd(...endArgs);
-    };
-
-    try {
-      const result = handler(req, res, wrappedNext);
-
-      if (result && typeof result.then === 'function') {
-        result
-          .catch((err) => {
-            if (!exited) {
-              exitReason = `error: ${err.message}`;
-              exited = true;
-              recordMiddlewareExit();
-            }
-            if (!calledNext) next(err);
-          })
-          .finally(() => {
-            if (!exited) {
-              exited = true;
-              recordMiddlewareExit();
-            }
-          });
-      } else if (!exited && !res.headersSent && !calledNext) {
-        // Synchronous handler that did not call next or send a response yet.
-        // Defer exit recording until response is sent or next is called.
-      }
-
-      return result;
-    } catch (err) {
-      if (!exited) {
-        exitReason = `error: ${err.message}`;
-        exited = true;
-        recordMiddlewareExit();
-      }
-      throw err;
-    }
   }
 
   wrapped.__openconsWrapped = true;
   wrapped.__openconsName = name;
+  Object.defineProperty(wrapped, 'length', { value: handler.length });
 
   return wrapped;
 }
