@@ -138,11 +138,19 @@ window.OpenconsGraph = {
         }
       });
 
+    // Track IDs that enter on this render pass so the pop animation is included
+    // in the class string. A local Set means subsequent re-renders (update path)
+    // produce a fresh empty Set, preventing the animation from re-triggering.
+    const enteringIds = new Set();
+
     const nodeGroups = g
       .selectAll('.graph-node')
       .data(layout.nodes, (d) => d.id)
       .join(
-        (enter) => enter.append('g').classed('node-enter', true),
+        (enter) => {
+          enter.each((d) => enteringIds.add(d.id));
+          return enter.append('g');
+        },
         (update) => update,
         (exit) => exit.remove()
       )
@@ -155,6 +163,7 @@ window.OpenconsGraph = {
           d.onSpine === false ? 'is-stub' : '',
           d.isDbHub ? 'is-db-hub' : '',
           d.isDbQuery ? 'is-db-query' : '',
+          enteringIds.has(d.id) ? 'node-enter' : '',
         ]
           .filter(Boolean)
           .join(' ')

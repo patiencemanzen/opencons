@@ -144,6 +144,7 @@ function upsertTrace(trace, options = {}) {
     for (const [id, t] of traces) {
       if (t.state !== 'active') {
         traces.delete(id);
+        renderedTraceIds.delete(id);
         if (traces.size <= CLIENT_MAX_TRACES) break;
       }
     }
